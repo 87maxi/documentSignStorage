@@ -129,24 +129,109 @@ export class EthereumService {
 
   static async connectWallet(): Promise<string> {
     try {
+      // Verificación exhaustiva de MetaMask
+      if (typeof window === 'undefined') {
+        throw new Error('Entorno de navegador no disponible')
+      }
+      
       if (!window.ethereum) {
-        throw new Error('MetaMask no está instalado')
+        // Verificar si es mobile con wallet apps
+        if (window.ethereum?.isMetaMask) {
+          throw new Error('MetaMask no está disponible. Verifica que la extensión esté instalada y activa.')
+        }
+        throw new Error(
+          'MetaMask no detectado. ' +
+          'Por favor, instala MetaMask desde https://metamask.io/ ' +
+          'o usa un navegador con MetaMask instalado.'
+        )
       }
 
-      this.provider = new BrowserProvider(window.ethereum)
+      // Verificar si MetaMask está desbloqueado
+      try {
+        const accounts = await window.ethereum.request({ 
+          method: 'eth_accounts',
+          params: []
+        })
+        
+        // Si ya hay cuentas conectadas, usarlas
+        if (accounts && accounts.length > 0) {
+          this.provider = new BrowserProvider(window.ethereum)
+          this.signer = await this.provider.getSigner()
+          const address = await this.signer.getAddress()
+          debug.wallet.connection(address, await this.getChainId())
+          return address
+        }
+      } catch (accountsError) {
+        debug.log.debug('eth_accounts failed, proceeding to request accounts:', accountsError)
+      }
+
+      // Solicitar conexión explícita - permitir selección de cuenta
+      try {
+        // Primero verificar cuáles cuentas están disponibles
+        const availableAccounts = await window.ethereum.request({
+          method: 'eth_accounts',
+          params: []
+        })
+        
+        // Si hay múltiples cuentas, forzar la selección
+        if (availableAccounts && availableAccounts.length > 1) {
+          // Cerrar cualquier conexión existente para forzar selección
+          await window.ethereum.request({
+            method: 'wallet_requestPermissions',
+            params: [{ eth_accounts: {} }]
+          }).catch(() => {
+            // Si falla, continuar con eth_requestAccounts normal
+          })
+        }
+
+        // Solicitar conexión estándar
+        const requestedAccounts = await window.ethereum.request({
+          method: 'eth_requestAccounts',
+          params: []
+        })
+        
+        if (!requestedAccounts || requestedAccounts.length === 0) {
+          throw new Error('MetaMask no devolvió ninguna cuenta. Por favor, asegúrate de tener una cuenta desbloqueada.')
+        }
+
+        this.provider = new BrowserProvider(window.ethereum)
+        this.signer = await this.provider.getSigner()
+        
+        const address = await this.signer.getAddress()
+        debug.wallet.connection(address, await this.getChainId())
+        
+        // Verificar si el usuario tiene múltiples cuentas y mostrar advertencia
+        if (availableAccounts && availableAccounts.length > 1) {
+          debug.log.info(`Usuario conectado con cuenta ${address} de ${availableAccounts.length} disponibles`)
+        }
+        
+        return address
+        
+      } catch (requestError: any) {
+        debug.log.error('eth_requestAccounts error:', requestError)
+        
+        if (requestError.code === 4001) {
+          throw new Error('Conexión rechazada. Por favor, acepta la solicitud de conexión en MetaMask para continuar.')
+        }
+        
+        if (requestError.message?.includes('Not connected')) {
+          throw new Error(
+            'MetaMask reporta "Not connected". ' +
+            'Por favor, verifica que MetaMask esté desbloqueado y ' +
+            'reload la página para intentar nuevamente.'
+          )
+        }
+        
+        throw new Error(`Error al conectar con MetaMask: ${requestError.message || 'Error desconocido'}`)
+      }
       
-      // Request account access
-      const accounts = await this.provider.send('eth_requestAccounts', [])
-      
-      this.signer = await this.provider.getSigner()
-      
-      const address = await this.signer.getAddress()
-      debug.wallet.connection(address, await this.getChainId())
-      
-      return address
     } catch (error) {
-      debug.log.error('connectWallet error:', error)
-      throw error
+      const errorMessage = error instanceof Error ? 
+        error.message : 
+        'Error desconocido al conectar con MetaMask'
+      
+      debug.log.error('connectWallet final error:', error)
+      throw new Error(errorMessage)
     }
   }
 
@@ -168,7 +253,43 @@ export class EthereumService {
   }
 
   static async isConnected(): Promise<boolean> {
-    return this.signer !== null
+    try {
+      if (typeof window === 'undefined' || !window.ethereum) {
+        return false
+      }
+
+      try {
+        // Intentar verificar cuentas de manera segura
+        const accounts = await window.ethereum.request({ 
+          method: 'eth_accounts',
+          params: []
+        })
+        
+        // Si hay cuentas, verificar permisos si es posible
+        if (accounts && accounts.length > 0) {
+          try {
+            const permissions = await window.ethereum.request({
+              method: 'wallet_getPermissions'
+            })
+            return Array.isArray(permissions) && 
+                   permissions.some((p: any) => p.parentCapability === 'eth_accounts')
+          } catch {
+            // Fallback: si no se pueden obtener permisos, confiar en las cuentas
+            return true
+          }
+        }
+        
+        return false
+        
+      } catch (error) {
+        debug.log.debug('isConnected check failed:', error)
+        return false
+      }
+      
+    } catch (error) {
+      debug.log.error('Error in isConnected:', error)
+      return false
+    }
   }
 
   static getContract(): Contract {
