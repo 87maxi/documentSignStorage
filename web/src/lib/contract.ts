@@ -1,79 +1,149 @@
-"use client";
+import { createPublicClient, http } from 'viem';
+import { mainnet } from 'viem/chains';
+import { createTestClient } from 'wagmi';
+// import {  } from  "wagmi.ts"
 
-import { useState, useEffect } from "react";
-import { useAccount, usePublicClient } from "wagmi";
 
-// Mock contract interface
-const useDocumentContract = () => {
-  const [contract, setContract] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const { address, isConnected } = useAccount();
-  const publicClient = usePublicClient();
+// Get contract address from environment variable
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
-  useEffect(() => {
-    if (isConnected && publicClient) {
-      // In production, this would initialize the contract instance
-      // const contract = new ethers.Contract(
-      //   CONTRACT_ADDRESS,
-      //   CONTRACT_ABI,
-      //   publicClient
-      // );
+// Temporary mock ABI - replace with actual contract ABI
+const mockABI = [
+  {
+    "inputs": [
+      {"internalType": "bytes32", "name": "hash", "type": "bytes32"},
+      {"internalType": "address", "name": "expectedSigner", "type": "address"}
+    ],
+    "name": "verifyDocument",
+    "outputs": [
+      {"internalType": "bool", "name": "isValid", "type": "bool"},
+      {"internalType": "address", "name": "signer", "type": "address"},
+      {"internalType": "uint256", "name": "timestamp", "type": "uint256"},
+      {"internalType": "uint256", "name": "blockNumber", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+class DocumentVerificationContract {
+  private client;
+
+  constructor() {
+    // Initialize the client with a default configuration
+    this.client = createPublicClient({
+      chain: mainnet,
+      transport: http('https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID'),
+    });
+  }
+
+  // Get contract address (useful for debugging)
+  getContractAddress(): string {
+    return CONTRACT_ADDRESS;
+  }
+
+  async storeDocumentHash(hash: string, signer: string) {
+    // This would require a wallet client for writing
+    console.log('storeDocumentHash', hash, signer);
+  }
+
+  async verifyDocument(hash: string, expectedSigner: string) {
+    if (!hash || !expectedSigner) {
+      return {
+        isValid: false,
+        signer: '',
+        timestamp: 0,
+        blockNumber: 0
+      };
+    }
+    
+    try {
+      // Ensure hash is properly formatted
+      const formattedHash = hash.startsWith('0x') ? hash : `0x${hash}`;
       
-      setContract({
-        // Mock methods
-        storeDocumentHash: async (hash: string, timestamp: number, signature: string) => {
-          console.log('Storing document hash:', hash);
-          // Simulate transaction
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          return { hash, timestamp, signature };
-        },
-        
-        verifyDocument: async (hash: string, signer: string, signature: string) => {
-          console.log('Verifying document:', { hash, signer, signature });
-          // Simulate network call
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          
-          // Mock result
-          return {
-            success: true,
-            verified: true,
-            signatureValid: true,
-            blockNumber: 12345678,
-            timestamp: Math.floor(Date.now() / 1000),
-            transactionHash: '0x' + 'a'.repeat(64)
-          };
-        },
-        
-        getDocumentInfo: async (hash: string) => {
-          console.log('Getting document info:', hash);
-          // Simulate network call
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Mock result
-          if (hash === '0x' + 'a'.repeat(64)) {
-            return {
-              exists: true,
-              signer: '0x742d35Cc6634C0532925a3b8D4C98aBd7788142C',
-              timestamp: Math.floor(Date.now() / 1000) - 86400,
-              blockNumber: 12345678
-            };
-          }
-          return { exists: false };
-        },
-        
-        hasDocument: async (user: string, hash: string) => {
-          console.log('Checking if user has document:', { user, hash });
-          // Simulate network call
-          await new Promise(resolve => setTimeout(resolve, 500));
-          return hash === '0x' + 'a'.repeat(64');
-        }
+      const result = await this.client.readContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: mockABI,
+        functionName: 'verifyDocument',
+        args: [formattedHash, expectedSigner]
       });
       
-      setLoading(false);
+      return {
+        isValid: result[0],
+        signer: result[1],
+        timestamp: result[2],
+        blockNumber: result[3]
+      };
+    } catch (error) {
+      console.error('Error verifying document:', error);
+      return {
+        isValid: false,
+        signer: '',
+        timestamp: 0,
+        blockNumber: 0
+      };
     }
-  }, [isConnected, publicClient, address]);
+  }
 
-  return { contract, loading, address };
-};
+  async getDocumentInfo(hash: string) {
+    if (!hash) {
+      return {
+        signer: '',
+        timestamp: 0,
+        blockNumber: 0,
+        isValid: false
+      };
+    }
+    
+    try {
+      // Ensure hash is properly formatted
+      const formattedHash = hash.startsWith('0x') ? hash : `0x${hash}`;
+      
+      const result = await this.client.readContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: mockABI,
+        functionName: 'getDocumentInfo',
+        args: [formattedHash]
+      });
+      
+      return {
+        signer: result[0],
+        timestamp: result[1],
+        blockNumber: result[2],
+        isValid: result[3]
+      };
+    } catch (error) {
+      console.error('Error getting document info:', error);
+      return {
+        signer: '',
+        timestamp: 0,
+        blockNumber: 0,
+        isValid: false
+      };
+    }
+  }
 
-export default useDocumentContract;
+  async hasDocument(user: string, hash: string) {
+    if (!user || !hash) {
+      return false;
+    }
+    
+    try {
+      // Ensure hash is properly formatted
+      const formattedHash = hash.startsWith('0x') ? hash : `0x${hash}`;
+      
+      const result = await this.client.readContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: mockABI,
+        functionName: 'hasDocument',
+        args: [user, formattedHash]
+      });
+      return result;
+    } catch (error) {
+      console.error('Error checking document ownership:', error);
+      return false;
+    }
+  }
+}
+
+export default DocumentVerificationContract;

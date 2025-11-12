@@ -76,7 +76,7 @@ invokable: true
 
 ## Funcionalidades de Selección de Archivo:
 
--  **Selector de archivos** - Input type="file" con drag & drop
+-  **Selector de archivos** - call to action con drag & drop
 -  **Previsualización** - Vista previa del documento seleccionado
 -  **Información del archivo:**
     - Nombre del archivo
@@ -110,7 +110,9 @@ invokable: true
 
 
 ## Métodos Públicos smartcontract en solidity
-- `storeDocumentHash(bytes32 hash, uint256 timestamp, bytes signature)`
-- `verifyDocument(bytes32 hash, address signer, bytes signature)`
-- `getDocumentInfo(bytes32 hash)`
-- `hasDocument(address user, bytes32 hash)`
+```solidity
+ storeDocumentHash(bytes32 hash, uint256 timestamp, bytes signature)
+ verifyDocument(bytes32 hash, address signer, bytes signature)
+ getDocumentInfo(bytes32 hash)
+ hasDocument(address user, bytes32 hash)
+ ```

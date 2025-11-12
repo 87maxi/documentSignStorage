@@ -1,9 +1,23 @@
-"use client";
+// web/src/app/layout.tsx
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import WagmiProviderWrapper from "../lib/WagmiProviderWrapper";
 
-import { WagmiConfig } from 'wagmi';
-import { config } from '@/lib/wagmi';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--geist-sans",
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--geist-mono",
+});
+
+export const metadata: Metadata = {
+  title: "Document Verification DApp",
+  description: "Verify document signatures on the blockchain",
+};
 
 export default function RootLayout({
   children,
@@ -12,15 +26,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-gray-100 flex flex-col">
-        <WagmiConfig config={config}>
-          <Header />
-          <main className="flex-grow container mx-auto px-4 py-8">
-            {children}
-          </main>
-          <Footer />
-        </WagmiConfig>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <WagmiProviderWrapper>
+          {children}
+        </WagmiProviderWrapper>
       </body>
     </html>
   );
 }
+

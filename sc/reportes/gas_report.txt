@@ -1,0 +1,66 @@
+Compiling 23 files with Solc 0.8.30
+Solc 0.8.30 finished in 551.99ms
+Compiler run successful!
+
+Ran 2 tests for test/Counter.t.sol:CounterTest
+[PASS] testFuzz_SetNumber(uint256) (runs: 256, μ: 52364, ~: 52517)
+[PASS] test_Increment() (gas: 51847)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 5.62ms (5.47ms CPU time)
+
+Ran 14 tests for test/DocumentRegistry.t.sol:DocumentRegistryTest
+[PASS] testFuzz_StoreAndVerifyDocument(bytes32,uint256) (runs: 256, μ: 152541, ~: 152754)
+[PASS] testFuzz_VerifyInvalidSignerFails(bytes32,address) (runs: 256, μ: 140688, ~: 140822)
+[PASS] test_GetDocumentInfo_ReturnsCorrectData() (gas: 152160)
+[PASS] test_HasDocument_ReturnsFalseForUnownedDocument() (gas: 143885)
+[PASS] test_HasDocument_ReturnsTrueForOwnedDocument() (gas: 143854)
+[PASS] test_NoReentrancyVulnerability() (gas: 821679)
+[PASS] test_RevertWhen_GetNonExistentDocumentInfo() (gas: 13847)
+[PASS] test_RevertWhen_StoreDuplicateDocument() (gas: 170047)
+[PASS] test_RevertWhen_StoreWithInvalidSignature() (gas: 42033)
+[PASS] test_RevertWhen_VerifyNonExistentDocument() (gas: 22129)
+[PASS] test_StoreDocumentHash_EmitsEvent() (gas: 142497)
+[PASS] test_StoreDocumentHash_Success() (gas: 149782)
+[PASS] test_VerifyDocument_InvalidSigner() (gas: 149720)
+[PASS] test_VerifyDocument_ValidSignature() (gas: 149883)
+Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 67.79ms (137.58ms CPU time)
+
+╭----------------------------------+-----------------+-------+--------+-------+---------╮
+| src/Counter.sol:Counter Contract |                 |       |        |       |         |
++=======================================================================================+
+| Deployment Cost                  | Deployment Size |       |        |       |         |
+|----------------------------------+-----------------+-------+--------+-------+---------|
+| 156813                           | 509             |       |        |       |         |
+|----------------------------------+-----------------+-------+--------+-------+---------|
+|                                  |                 |       |        |       |         |
+|----------------------------------+-----------------+-------+--------+-------+---------|
+| Function Name                    | Min             | Avg   | Median | Max   | # Calls |
+|----------------------------------+-----------------+-------+--------+-------+---------|
+| increment                        | 43482           | 43482 | 43482  | 43482 | 1       |
+|----------------------------------+-----------------+-------+--------+-------+---------|
+| number                           | 2424            | 2424  | 2424   | 2424  | 257     |
+|----------------------------------+-----------------+-------+--------+-------+---------|
+| setNumber                        | 23784           | 43413 | 43720  | 44068 | 258     |
+╰----------------------------------+-----------------+-------+--------+-------+---------╯
+
+╭----------------------------------------------------+-----------------+--------+--------+--------+---------╮
+| src/DocumentRegistry.sol:DocumentRegistry Contract |                 |        |        |        |         |
++===========================================================================================================+
+| Deployment Cost                                    | Deployment Size |        |        |        |         |
+|----------------------------------------------------+-----------------+--------+--------+--------+---------|
+| 763670                                             | 3325            |        |        |        |         |
+|----------------------------------------------------+-----------------+--------+--------+--------+---------|
+|                                                    |                 |        |        |        |         |
+|----------------------------------------------------+-----------------+--------+--------+--------+---------|
+| Function Name                                      | Min             | Avg    | Median | Max    | # Calls |
+|----------------------------------------------------+-----------------+--------+--------+--------+---------|
+| getDocumentInfo                                    | 2975            | 8141   | 8161   | 8161   | 264     |
+|----------------------------------------------------+-----------------+--------+--------+--------+---------|
+| hasDocument                                        | 3116            | 3116   | 3116   | 3116   | 2       |
+|----------------------------------------------------+-----------------+--------+--------+--------+---------|
+| storeDocumentHash                                  | 26926           | 119403 | 119905 | 120289 | 528     |
+|----------------------------------------------------+-----------------+--------+--------+--------+---------|
+| verifyDocument                                     | 3835            | 7936   | 7825   | 8064   | 515     |
+╰----------------------------------------------------+-----------------+--------+--------+--------+---------╯
+
+
+Ran 2 test suites in 104.72ms (73.41ms CPU time): 16 tests passed, 0 failed, 0 skipped (16 total tests)

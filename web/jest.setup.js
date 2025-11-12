@@ -1,13 +1,16 @@
 import '@testing-library/jest-dom';
 
-// Mock Next.js router
-jest.mock('next/router', () => require('next-router-mock'));
-
-// Mock fetch
-if (!globalThis.fetch) {
-  globalThis.fetch = require('node-fetch');
-}
-
-// Add any other global setup here
-console.error = jest.fn();
-console.warn = jest.fn();
+// Mock matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
+});

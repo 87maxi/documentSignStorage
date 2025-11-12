@@ -1,137 +1,114 @@
-# Document Sign & Storage - DApp Documentation
+# Document Verification DApp
 
 ## Overview
 
-Document Sign & Storage is a decentralized application (DApp) that allows users to verify and store document signatures on the blockchain. The application provides a secure, tamper-proof way to authenticate documents by storing their cryptographic hashes on the Ethereum blockchain.
+This is a decentralized application (DApp) that allows users to verify the authenticity of document signatures stored on the blockchain. The application uses Next.js with TypeScript, Tailwind CSS, and a suite of blockchain tools including wagmi, viem, and RainbowKit for wallet integration.
 
 ## Features
 
-### Core Functionality
-- **Document Verification**: Verify the authenticity of documents by checking their hash against the blockchain
-- **Secure Storage**: Store document hashes with timestamps and signatures
-- **Blockchain Integration**: Leverage Ethereum blockchain for immutability and security
-- **Wallet Connectivity**: Connect with popular Ethereum wallets (MetaMask, Coinbase Wallet, WalletConnect)
+- **Wallet Integration**: Connect to MetaMask and other EVM-compatible wallets using RainbowKit
+- **Document Hash Verification**: Calculate SHA-256 hash of documents and verify their authenticity on the blockchain
+- **Responsive Design**: Mobile-first design that works across all device sizes
+- **Real-time Verification**: Check document signatures against the DocumentVerification smart contract
+- **User-friendly Interface**: Drag-and-drop file upload with visual feedback
 
-### User Interface Components
+## Technology Stack
 
-#### Header
-- Branded header with application name and logo
-- Responsive navigation menu
-- Blockchain security indicator (green dot)
+### Frontend
+- **Next.js**: React framework for server-side rendering and static site generation
+- **TypeScript**: Type-safe JavaScript development
+- **Tailwind CSS**: Utility-first CSS framework for rapid UI development
+- **React**: Component-based UI library
 
-#### Document Verification Interface
-- **File Selector**: Drag & drop interface for document upload with file preview
-- **Signer Address Input**: Input field for Ethereum address or ENS name with:
-  - Format validation
-  - ENS resolution
-  - Address history
-  - Visual validation indicators
-- **Verification Result**: Detailed display of verification results including:
-  - Verification status
-  - Document hash
-  - Signer address
-  - Block number and timestamp
-  - Transaction details with Etherscan link
+### Blockchain
+- **wagmi**: React hooks for Ethereum that simplify wallet connections
+- **viem**: Type-safe, high-performance Ethereum client
+- **RainbowKit**: Wallet connection UI for decentralized applications
+- **Ethers.js**: Comprehensive library for interacting with the Ethereum blockchain
 
-#### Footer
-- Loading state with progress indicator
-- Transaction details display
-- Blockchain explorer links
+## Smart Contract
 
-## Technical Architecture
+The application interacts with the DocumentVerification smart contract, which provides the following functionality:
 
-### Frontend Stack
-- **Framework**: Next.js 14 with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS with responsive design
-- **State Management**: React Hooks and Context API
-- **Testing**: Jest, React Testing Library
+- `storeDocumentHash(bytes32 _hash, address _signer)`: Stores a document hash with its signer
+- `verifyDocument(bytes32 _hash, address _signer)`: Verifies if a document hash matches the expected signer
+- `getDocumentInfo(bytes32 _hash)`: Retrieves detailed information about a document
+- `hasDocument(address _user, bytes32 _hash)`: Checks if a user has a specific document
 
-### Web3 Integration
-- **Wallet Connection**: wagmi with RainbowKit
-- **Blockchain Interaction**: viem and ethers.js
-- **Supported Chains**: Ethereum Mainnet and Sepolia Testnet
-- **Providers**: Public provider for read operations
-
-### Security Features
-- SHA-256 hash calculation in-browser
-- Ethereum address format validation
-- ENS name resolution
-- Transaction verification
-
-## Development Setup
-
-### Environment Variables
-Create a `.env` file with the following variables:
-```
-NEXT_PUBLIC_ALCHEMY_API_KEY=
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
-NEXT_PUBLIC_INFURA_API_KEY=
-```
-
-### Scripts
-- `dev`: Start development server
-- `build`: Create production build
-- `start`: Start production server
-- `lint`: Run ESLint
-- `test`: Run Jest tests
-- `test:watch`: Run tests in watch mode
-
-## Component Structure
+## Project Structure
 
 ```
-src/
-├── components/
-│   ├── DocumentVerification.tsx
-│   ├── FileSelector.tsx
-│   ├── Footer.tsx
-│   ├── Header.tsx
-│   ├── SignerAddressInput.tsx
-│   └── VerificationResult.tsx
-├── lib/
-│   ├── contract.ts
-│   └── wagmi.ts
-├── utils/
-├── app/
-│   ├── layout.tsx
-│   └── page.tsx
-└── types/
+web/
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components/
+│   │   ├── DocumentVerification.tsx
+│   │   ├── FileSelector.tsx
+│   │   ├── SignerAddressInput.tsx
+│   │   ├── VerificationResult.tsx
+│   │   ├── Header.tsx
+│   │   └── Footer.tsx
+│   └── lib/
+│       ├── wagmi.ts
+│       └── contract.ts
+├── contracts/
+│   └── DocumentVerification.sol
+├── artifacts/
+│   └── contracts/
+│       └── DocumentVerification.sol/
+│           └── DocumentVerification.json
+├── .env
+├── jest.config.js
+├── jest.setup.js
+├── next.config.ts
+├── package.json
+└── docs.md
 ```
+
+## Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
+```
+
+## Getting Started
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Start the development server: `npm run dev`
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Testing
 
-Comprehensive unit tests are implemented for all components using Jest and React Testing Library:
-- `FileSelector.test.tsx`: Tests for file upload, drag & drop, and validation
-- `SignerAddressInput.test.tsx`: Tests for address validation, ENS resolution, and history
-- `VerificationResult.test.tsx`: Tests for result display and status rendering
-- `DocumentVerification.test.tsx`: Integration tests for the main verification flow
+The application includes comprehensive unit tests for all components:
 
-## Contract Integration
+- `FileSelector.test.tsx`: Tests file upload functionality including drag-and-drop and click-to-upload
+- `SignerAddressInput.test.tsx`: Tests signer address input and validation
+- `VerificationResult.test.tsx`: Tests verification result display
+- `DocumentVerification.test.tsx`: Integration test for the main component
 
-The DApp interfaces with a smart contract that provides the following methods:
-- `storeDocumentHash(bytes32 hash, uint256 timestamp, bytes signature)`
-- `verifyDocument(bytes32 hash, address signer, bytes signature)`
-- `getDocumentInfo(bytes32 hash)`
-- `hasDocument(address user, bytes32 hash)`
-
-## Responsive Design
-
-The application is fully responsive and works across:
-- Desktop (≥768px)
-- Tablet (640px - 767px)
-- Mobile (<640px)
-
-All components adapt to different screen sizes with Tailwind CSS utility classes.
-
-## Accessibility
-
-The application follows web accessibility best practices:
-- Semantic HTML structure
-- Proper ARIA labels and roles
-- Keyboard navigation support
-- Sufficient color contrast
-- Responsive and scalable text
+Run tests with: `npm test`
 
 ## Deployment
 
-The application can be deployed to Vercel, Netlify, or any platform that supports Next.js applications. Environment variables must be configured in the deployment platform.
+The application can be deployed to Vercel, Netlify, or any static hosting service that supports Next.js applications.
+
+## Security Considerations
+
+- All document hashes are calculated client-side to maintain privacy
+- The application uses secure SHA-256 hashing algorithm
+- Input validation is performed on both client and smart contract levels
+- Proper error handling prevents information leakage
+
+## Future Enhancements
+
+- Add document storage to IPFS or similar decentralized storage
+- Implement document signing functionality
+- Add support for multiple blockchain networks
+- Implement document versioning and revocation
+- Add user profile and document management
+- Implement advanced search and filtering capabilities

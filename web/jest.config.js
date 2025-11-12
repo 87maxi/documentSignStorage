@@ -1,25 +1,20 @@
 module.exports = {
-  preset: 'ts-jest',
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  testMatch: [
+    '**/__tests__/**/*.(spec|test).(ts|tsx|js|jsx)',
+    '**/?(*.)+(spec|test).(ts|tsx|js|jsx)',
+  ],
   transform: {
     '^.+\\.(ts|tsx)$': 'ts-jest',
   },
-  transformIgnorePatterns: [
-    '/node_modules/',
-  ],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$',
-  moduleDirectories: ['node_modules', 'web'],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
-    '!src/**/index.ts',
+    '!src/lib/wagmi.ts',
+    '!src/app/layout.tsx',
+    '!src/app/page.tsx',
   ],
-  coverageReporters: ['json', 'lcov', 'text', 'clover'],
   coverageDirectory: 'coverage',
-  testPathIgnorePatterns: ['/node_modules/', '/.next/'],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
-  },
 };
