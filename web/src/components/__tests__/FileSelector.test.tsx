@@ -1,98 +1,130 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import FileSelector from '../FileSelector'
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import FileSelector from '../FileSelector';
 
-// Mock the fileUtils module
-jest.mock('@/utils/fileUtils', () => ({
-  calculateSHA256Hash: jest.fn().mockResolvedValue('0x' + 'ab'.repeat(32)),
-  formatFileSize: jest.fn().mockReturnValue('1 KB'),
-  isValidFileType: jest.fn().mockReturnValue(true),
-  ALLOWED_FILE_TYPES: ['application/pdf', 'image/jpeg']
-}))
+// Mock the calculateFileHash function
+jest.mock('../../utils/fileUtils', () => ({
+  calculateFileHash: jest.fn(() => Promise.resolve('testhash123'))
+}));
+
+const mockOnFileSelected = jest.fn();
 
 describe('FileSelector', () => {
-  const mockOnFileSelect = jest.fn()
-  
   beforeEach(() => {
-    jest.clearAllMocks()
-  })
+    jest.clearAllMocks();
+  });
 
   it('renders correctly', () => {
-    render(<FileSelector onFileSelect={mockOnFileSelect} />)
+    render(<FileSelector onFileSelected={mockOnFileSelected} />);
     
-    expect(screen.getByText(/Haz clic para subir/)).toBeInTheDocument()
-    expect(screen.getByText(/PDF, Word, texto o imágenes/)).toBeInTheDocument()
-  })
+    expect(screen.getByText('Select Document')).toBeInTheDocument();
+    expect(screen.getByText('Click to upload')).toBeInTheDocument();
+    expect(screen.getByText('or drag and drop')).toBeInTheDocument();
+    expect(screen.getByText('PDF, DOC, DOCX, TXT up to 10MB')).toBeInTheDocument();
+  });
 
-  it('handles file selection via input', async () => {
-    const user = userEvent.setup()
-    render(<FileSelector onFileSelect={mockOnFileSelect} />)
+  it('handles file selection via click', async () => {
+    render(<FileSelector onFileSelected={mockOnFileSelected} />);
     
-    const file = new File(['test content'], 'test.pdf', { type: 'application/pdf' })
-    const input = screen.getByTestId('file-input')
+    const file = new File(['hello world'], 'test.pdf', { type: 'application/pdf' });
     
-    await user.upload(input, file)
+    // Mock the click behavior
+    const fileInput = screen.getByTestId('file-input');
+    Object.defineProperty(fileInput, 'files', {
+      value: [file],
+      writable: false,
+    });
+    
+    fireEvent.change(fileInput);
     
     await waitFor(() => {
-      expect(mockOnFileSelect).toHaveBeenCalledWith(file, expect.any(String))
-    })
-    
-    expect(screen.getByText('test.pdf')).toBeInTheDocument()
-  })
+      expect(mockOnFileSelected).toHaveBeenCalledWith(file, 'testhash123');
+    });
+  });
 
-  it('shows error for invalid file type', async () => {
-    const { isValidFileType } = require('@/utils/fileUtils')
-    isValidFileType.mockReturnValueOnce(false)
+  it('displays file preview after selection', async () => {
+    render(<FileSelector onFileSelected={mockOnFileSelected} />);
     
-    render(<FileSelector onFileSelect={mockOnFileSelect} />)
+    const file = new File(['hello world'], 'document.pdf', { type: 'application/pdf' });
     
-    const file = new File(['test content'], 'test.js', { type: 'application/javascript' })
-    const input = screen.getByTestId('file-input')
+    const input = screen.getByTestId('file-input');
+    Object.defineProperty(input, 'files', {
+      value: [file],
+      writable: false,
+    });
     
-    fireEvent.change(input, { target: { files: [file] } })
+    fireEvent.change(input);
     
     await waitFor(() => {
-      expect(screen.getByText(/Tipo de archivo no válido/)).toBeInTheDocument()
-    })
-    
-    expect(mockOnFileSelect).not.toHaveBeenCalled()
-  })
+      expect(screen.getByText('document.pdf')).toBeInTheDocument();
+      expect(screen.getByText('4.0 KB')).toBeInTheDocument();
+    });
+  });
 
-  it('shows loading state during hash calculation', async () => {
-    const { calculateSHA256Hash } = require('@/utils/fileUtils')
-    // Create a promise that we can resolve manually
-    let resolveHash: (value: string) => void
-    calculateSHA256Hash.mockImplementationOnce(() => 
-      new Promise(resolve => {
-        resolveHash = resolve
-      })
-    )
+  it('handles drag and drop', async () => {
+    render(<FileSelector onFileSelected={mockOnFileSelected} />);
     
-    render(<FileSelector onFileSelect={mockOnFileSelect} />)
+    const file = new File(['hello world'], 'test.pdf', { type: 'application/pdf' });
+    const dropArea = screen.getByText('Click to upload').closest('div')!;
     
-    const file = new File(['test content'], 'test.pdf', { type: 'application/pdf' })
-    const input = screen.getByTestId('file-input')
+    // Simulate drag over
+    fireEvent.dragOver(dropArea);
+    expect(dropArea).toHaveClass('border-blue-500');
     
-    fireEvent.change(input, { target: { files: [file] } })
+    // Simulate drop
+    const dataTransfer = {
+      files: [file],
+      items: [],
+      types: ['Files']
+    };
     
-    expect(screen.getByText('Calculando hash...')).toBeInTheDocument()
-    
-    // Resolve the promise
-    resolveHash!('0x' + 'cd'.repeat(32))
+    fireEvent.drop(dropArea, { dataTransfer });
     
     await waitFor(() => {
-      expect(mockOnFileSelect).toHaveBeenCalled()
-    })
-  })
+      expect(mockOnFileSelected).toHaveBeenCalledWith(file, 'testhash123');
+    });
+  });
 
-  it('disables interaction when disabled prop is true', () => {
-    render(<FileSelector onFileSelect={mockOnFileSelect} disabled={true} />)
+  it('shows error for empty file', async () => {
+    render(<FileSelector onFileSelected={mockOnFileSelected} />);
     
-    // Check that the input is disabled
-    const input = screen.getByTestId('file-input')
-    expect(input).toBeDisabled()
+    const file = new File([], 'empty.pdf', { type: 'application/pdf' });
+    const input = screen.getByTestId('file-input');
     
-    // Check that the drop zone text indicates disabled state
-    expect(screen.getByText(/Haz clic para subir/)).toBeInTheDocument()
-  })
-})
+    Object.defineProperty(input, 'files', {
+      value: [file],
+      writable: false,
+    });
+    
+    fireEvent.change(input);
+    
+    await waitFor(() => {
+      expect(screen.getByText('File is empty')).toBeInTheDocument();
+      expect(mockOnFileSelected).not.toHaveBeenCalled();
+    });
+  });
+
+  it('clears file when remove button is clicked', async () => {
+    render(<FileSelector onFileSelected={mockOnFileSelected} />);
+    
+    const file = new File(['hello world'], 'test.pdf', { type: 'application/pdf' });
+    const input = screen.getByTestId('file-input');
+    
+    Object.defineProperty(input, 'files', {
+      value: [file],
+      writable: false,
+    });
+    
+    fireEvent.change(input);
+    
+    await waitFor(() => {
+      expect(screen.getByText('test.pdf')).toBeInTheDocument();
+    });
+    
+    // Click remove button
+    const removeButton = screen.getByRole('button', { name: /remove/i });
+    fireEvent.click(removeButton);
+    
+    expect(screen.queryByText('test.pdf')).not.toBeInTheDocument();
+  });
+});

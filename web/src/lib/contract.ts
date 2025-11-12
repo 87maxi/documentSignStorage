@@ -1,215 +1,79 @@
-// DocumentVerification Contract ABI
-export const DOCUMENT_VERIFICATION_ABI = [
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_hash",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "_signer",
-        "type": "address"
-      }
-    ],
-    "name": "storeDocumentHash",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_hash",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "_signer",
-        "type": "address"
-      }
-    ],
-    "name": "verifyDocument",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "isValid",
-        "type": "bool"
-      },
-      {
-        "internalType": "address",
-        "name": "signer",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "blockNumber",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_hash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "getDocumentInfo",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "signer",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "blockNumber",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "isValid",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_user",
-        "type": "address"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_hash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "hasDocument",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "name": "documents",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "hash",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "signer",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "blockNumber",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bool",
-        "name": "isValid",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "hash",
-        "type": "bytes32"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "signer",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "blockNumber",
-        "type": "uint256"
-      }
-    ],
-    "name": "DocumentStored",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "hash",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "signer",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "isValid",
-        "type": "bool"
-      }
-    ],
-    "name": "DocumentVerified",
-    "type": "event"
-  }
-] as const
+"use client";
 
-export const DOCUMENT_VERIFICATION_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`
+import { useState, useEffect } from "react";
+import { useAccount, usePublicClient } from "wagmi";
+
+// Mock contract interface
+const useDocumentContract = () => {
+  const [contract, setContract] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
+
+  useEffect(() => {
+    if (isConnected && publicClient) {
+      // In production, this would initialize the contract instance
+      // const contract = new ethers.Contract(
+      //   CONTRACT_ADDRESS,
+      //   CONTRACT_ABI,
+      //   publicClient
+      // );
+      
+      setContract({
+        // Mock methods
+        storeDocumentHash: async (hash: string, timestamp: number, signature: string) => {
+          console.log('Storing document hash:', hash);
+          // Simulate transaction
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return { hash, timestamp, signature };
+        },
+        
+        verifyDocument: async (hash: string, signer: string, signature: string) => {
+          console.log('Verifying document:', { hash, signer, signature });
+          // Simulate network call
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Mock result
+          return {
+            success: true,
+            verified: true,
+            signatureValid: true,
+            blockNumber: 12345678,
+            timestamp: Math.floor(Date.now() / 1000),
+            transactionHash: '0x' + 'a'.repeat(64)
+          };
+        },
+        
+        getDocumentInfo: async (hash: string) => {
+          console.log('Getting document info:', hash);
+          // Simulate network call
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Mock result
+          if (hash === '0x' + 'a'.repeat(64)) {
+            return {
+              exists: true,
+              signer: '0x742d35Cc6634C0532925a3b8D4C98aBd7788142C',
+              timestamp: Math.floor(Date.now() / 1000) - 86400,
+              blockNumber: 12345678
+            };
+          }
+          return { exists: false };
+        },
+        
+        hasDocument: async (user: string, hash: string) => {
+          console.log('Checking if user has document:', { user, hash });
+          // Simulate network call
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return hash === '0x' + 'a'.repeat(64');
+        }
+      });
+      
+      setLoading(false);
+    }
+  }, [isConnected, publicClient, address]);
+
+  return { contract, loading, address };
+};
+
+export default useDocumentContract;
