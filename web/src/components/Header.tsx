@@ -1,15 +1,15 @@
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+"use client"
 
-export default function Header() {
+import { ReactNode } from 'react';
+
+export function Header({ children }: { children?: ReactNode }) {
   return (
-    <header className="bg-white dark:bg-gray-900 shadow-md">
-      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <span className="text-2xl font-bold text-blue-600">DocVerify</span>
-          <span className="text-sm text-gray-500 dark:text-gray-400">Blockchain Document Verification</span>
-        </div>
-        <ConnectButton />
+    <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white shadow-sm">
+      <div className="flex items-center space-x-2">
+        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+        <h1 className="text-xl font-semibold text-gray-800">DocumentSign</h1>
       </div>
+      {children}
     </header>
   );
 }

@@ -1,149 +1,137 @@
-import { createPublicClient, http } from 'viem';
-import { mainnet } from 'viem/chains';
-import { createTestClient } from 'wagmi';
-// import {  } from  "wagmi.ts"
+"use client"
 
+import { useEffect, useState } from 'react';
+import { ethers, Contract } from 'ethers';
 
-// Get contract address from environment variable
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+// Replace with your actual contract address and ABI
+const CONTRACT_ADDRESS = "0x5fbdb2315678afecb367f032d93f642f64180aa3"; // Deployed contract address from Anvil
 
-// Temporary mock ABI - replace with actual contract ABI
-const mockABI = [
-  {
-    "inputs": [
-      {"internalType": "bytes32", "name": "hash", "type": "bytes32"},
-      {"internalType": "address", "name": "expectedSigner", "type": "address"}
-    ],
-    "name": "verifyDocument",
-    "outputs": [
-      {"internalType": "bool", "name": "isValid", "type": "bool"},
-      {"internalType": "address", "name": "signer", "type": "address"},
-      {"internalType": "uint256", "name": "timestamp", "type": "uint256"},
-      {"internalType": "uint256", "name": "blockNumber", "type": "uint256"}
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
+// ABI completo para Document Registry contract
+const CONTRACT_ABI = [
+  "function storeDocumentHash(bytes32 hash, uint256 timestamp, bytes memory signature) external",
+  "function verifyDocument(bytes32 hash, address signer, bytes memory signature) external view returns (bool)",
+  "function getDocumentInfo(bytes32 hash) external view returns (bytes32 hash, uint256 timestamp, address signer, bool exists)",
+  "function hasDocument(address user, bytes32 hash) external view returns (bool)"
 ];
 
-class DocumentVerificationContract {
-  private client;
-
-  constructor() {
-    // Initialize the client with a default configuration
-    this.client = createPublicClient({
-      chain: mainnet,
-      transport: http('https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID'),
-    });
-  }
-
-  // Get contract address (useful for debugging)
-  getContractAddress(): string {
-    return CONTRACT_ADDRESS;
-  }
-
-  async storeDocumentHash(hash: string, signer: string) {
-    // This would require a wallet client for writing
-    console.log('storeDocumentHash', hash, signer);
-  }
-
-  async verifyDocument(hash: string, expectedSigner: string) {
-    if (!hash || !expectedSigner) {
-      return {
-        isValid: false,
-        signer: '',
-        timestamp: 0,
-        blockNumber: 0
-      };
-    }
-    
-    try {
-      // Ensure hash is properly formatted
-      const formattedHash = hash.startsWith('0x') ? hash : `0x${hash}`;
-      
-      const result = await this.client.readContract({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        abi: mockABI,
-        functionName: 'verifyDocument',
-        args: [formattedHash, expectedSigner]
-      });
-      
-      return {
-        isValid: result[0],
-        signer: result[1],
-        timestamp: result[2],
-        blockNumber: result[3]
-      };
-    } catch (error) {
-      console.error('Error verifying document:', error);
-      return {
-        isValid: false,
-        signer: '',
-        timestamp: 0,
-        blockNumber: 0
-      };
-    }
-  }
-
-  async getDocumentInfo(hash: string) {
-    if (!hash) {
-      return {
-        signer: '',
-        timestamp: 0,
-        blockNumber: 0,
-        isValid: false
-      };
-    }
-    
-    try {
-      // Ensure hash is properly formatted
-      const formattedHash = hash.startsWith('0x') ? hash : `0x${hash}`;
-      
-      const result = await this.client.readContract({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        abi: mockABI,
-        functionName: 'getDocumentInfo',
-        args: [formattedHash]
-      });
-      
-      return {
-        signer: result[0],
-        timestamp: result[1],
-        blockNumber: result[2],
-        isValid: result[3]
-      };
-    } catch (error) {
-      console.error('Error getting document info:', error);
-      return {
-        signer: '',
-        timestamp: 0,
-        blockNumber: 0,
-        isValid: false
-      };
-    }
-  }
-
-  async hasDocument(user: string, hash: string) {
-    if (!user || !hash) {
-      return false;
-    }
-    
-    try {
-      // Ensure hash is properly formatted
-      const formattedHash = hash.startsWith('0x') ? hash : `0x${hash}`;
-      
-      const result = await this.client.readContract({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        abi: mockABI,
-        functionName: 'hasDocument',
-        args: [user, formattedHash]
-      });
-      return result;
-    } catch (error) {
-      console.error('Error checking document ownership:', error);
-      return false;
-    }
-  }
+interface ContractDocumentInfo {
+  hash: string;
+  timestamp: number;
+  signer: string;
+  exists: boolean;
 }
 
-export default DocumentVerificationContract;
+export const useContract = () => {
+  const [contract, setContract] = useState<Contract | null>(null);
+  const [signerAddress, setSignerAddress] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [provider, setProvider] = useState<any>(null);
+
+    useEffect(() => {
+    const initializeContract = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Siempre usar Anvil como proveedor (único método de conexión)
+        const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+        // Usar la primera cuenta de Anvil por defecto
+        const signer = await provider.getSigner(0);
+        
+        // Crear instancia del contrato
+        const contractInstance = new ethers.Contract(
+          CONTRACT_ADDRESS,
+          CONTRACT_ABI,
+          signer
+        );
+        
+        setContract(contractInstance);
+        setSignerAddress(await signer.getAddress());
+      } catch (err) {
+        console.error('Contract initialization error:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    initializeContract();
+  }, []);
+
+  const storeDocumentHash = async (hash: string, timestamp: number, signature: string): Promise<boolean> => {
+    if (!contract) throw new Error('Contract not initialized');
+    
+    try {
+      const tx = await contract.storeDocumentHash(hash, timestamp, signature);
+      await tx.wait();
+      return true;
+    } catch (err) {
+      console.error('Error storing document hash:', err);
+      throw err;
+    }
+  };
+
+  const getDocumentInfo = async (hash: string): Promise<ContractDocumentInfo | null> => {
+    if (!contract) throw new Error('Contract not initialized');
+    
+    try {
+      const info = await contract.getDocumentInfo(hash);
+      return {
+        hash: info.hash,
+        timestamp: Number(info.timestamp),
+        signer: info.signer,
+        exists: info.exists
+      };
+    } catch (err) {
+      console.error('Error getting document info:', err);
+      return null;
+    }
+  };
+
+  const verifyDocument = async (hash: string, signer: string, signature: string): Promise<boolean> => {
+    if (!contract) throw new Error('Contract not initialized');
+    
+    try {
+      return await contract.verifyDocument(hash, signer, signature);
+    } catch (err) {
+      console.error('Error verifying document:', err);
+      return false;
+    }
+  };
+
+  const hasDocument = async (user: string, hash: string): Promise<boolean> => {
+    if (!contract) throw new Error('Contract not initialized');
+    
+    try {
+      return await contract.hasDocument(user, hash);
+    } catch (err) {
+      console.error('Error checking if user has document:', err);
+      return false;
+    }
+  };
+
+  const getSignerAddress = async (): Promise<string> => {
+    if (!contract) throw new Error('Contract not initialized');
+    
+    try {
+      return await contract.signer();
+    } catch (err) {
+      console.error('Error getting signer address:', err);
+      throw err;
+    }
+  };
+
+  return {
+    contract,
+    signerAddress,
+    isLoading,
+    error,
+    storeDocumentHash,
+    getDocumentInfo,
+    verifyDocument,
+    hasDocument,
+    getSignerAddress,
+    provider
+  };
+};

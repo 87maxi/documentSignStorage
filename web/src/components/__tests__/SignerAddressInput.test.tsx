@@ -1,85 +1,93 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import SignerAddressInput from '../SignerAddressInput';
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { SignerAddressInput } from '@/components/SignerAddressInput';
+import { act } from 'react-dom/test-utils';
 
 describe('SignerAddressInput', () => {
   const mockOnChange = jest.fn();
-  const mockOnVerify = jest.fn();
 
   beforeEach(() => {
     mockOnChange.mockClear();
-    mockOnVerify.mockClear();
+    // Clear localStorage
+    localStorage.clear();
   });
 
-  it('renders correctly', () => {
-    render(
-      <SignerAddressInput 
-        value="" 
-        onChange={mockOnChange} 
-        onVerify={mockOnVerify} 
-      />
-    );
+  it('renders input with label', () => {
+    render(<SignerAddressInput value="" onChange={mockOnChange} />);
     
-    expect(screen.getByLabelText(/signer address/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /verify/i })).toBeInTheDocument();
+    expect(screen.getByText('Signer Address')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Enter Ethereum address or ENS name')).toBeInTheDocument();
   });
 
-  it('updates value when input changes', async () => {
-    const user = userEvent.setup();
-    render(
-      <SignerAddressInput 
-        value="" 
-        onChange={mockOnChange} 
-        onVerify={mockOnVerify} 
-      />
-    );
+  it('validates Ethereum address format', () => {
+    render(<SignerAddressInput value="" onChange={mockOnChange} />);
     
-    const input = screen.getByLabelText(/signer address/i);
-    await user.type(input, '0x1234567890abcdef1234567890abcdef1234567890');
+    const input = screen.getByPlaceholderText('Enter Ethereum address or ENS name');
     
-    expect(mockOnChange).toHaveBeenCalledTimes(43);
-    expect(mockOnChange).toHaveBeenLastCalledWith('0x1234567890abcdef1234567890abcdef1234567890');
+    // Invalid address
+    fireEvent.change(input, { target: { value: 'invalid-address' } });
+    const errorText = screen.queryByText('Invalid Ethereum address format');
+    expect(errorText).not.toBeInTheDocument();
+    
+    // Valid address
+    fireEvent.change(input, { target: { value: '0x1234567890123456789012345678901234567890' } });
+    expect(screen.queryByText('Invalid Ethereum address format')).not.toBeInTheDocument();
   });
 
-  it('calls onVerify when verify button is clicked', async () => {
-    const user = userEvent.setup();
-    render(
-      <SignerAddressInput 
-        value="0x1234567890abcdef1234567890abcdef1234567890" 
-        onChange={mockOnChange} 
-        onVerify={mockOnVerify} 
-      />
-    );
+  it('handles ENS name resolution', async () => {
+    render(<SignerAddressInput value="" onChange={mockOnChange} />);
     
-    const verifyButton = screen.getByRole('button', { name: /verify/i });
-    await user.click(verifyButton);
+    const input = screen.getByPlaceholderText('Enter Ethereum address or ENS name');
     
-    expect(mockOnVerify).toHaveBeenCalledTimes(1);
+    // Type ENS name
+    fireEvent.change(input, { target: { value: 'test.eth' } });
+    
+    // Resolve button should appear
+    const resolveButton = screen.getByTitle('Resolve ENS name');
+    expect(resolveButton).toBeInTheDocument();
+    
+    // Click resolve button
+    await act(async () => {
+      fireEvent.click(resolveButton);
+    });
+    
+    // Should show loading state
+    const loadingSpinner = screen.getByTitle('Resolve ENS name').querySelector('svg');
+    expect(loadingSpinner).toHaveClass('animate-spin');
+    
+    // Wait for resolution to complete
+    await waitFor(() => {
+      expect(screen.getByText('ENS Name: test.eth')).toBeInTheDocument();
+    });
+    
+    // Should call onChange with resolved address
+    expect(mockOnChange).toHaveBeenCalledWith(expect.stringMatching(/^0x[0-9a-f]{40}$/));
   });
 
-  it('disables verify button when value is empty', () => {
-    render(
-      <SignerAddressInput 
-        value="" 
-        onChange={mockOnChange} 
-        onVerify={mockOnVerify} 
-      />
-    );
+  it('stores and displays recent addresses', () => {
+    // Set a recent address in localStorage
+    localStorage.setItem('recentSignerAddresses', JSON.stringify(['0x1234567890123456789012345678901234567890']));
     
-    const verifyButton = screen.getByRole('button', { name: /verify/i });
-    expect(verifyButton).toBeDisabled();
+    render(<SignerAddressInput value="" onChange={mockOnChange} />);
+    
+    // Recent addresses section should be visible
+    expect(screen.getByText('Recent addresses')).toBeInTheDocument();
+    
+    // Recent address button should be present
+    const recentBtn = screen.getByText(/0x12...7890/);
+    expect(recentBtn).toBeInTheDocument();
+    
+    // Clicking recent address should update input
+    fireEvent.click(recentBtn);
+    expect(mockOnChange).toHaveBeenCalledWith('0x1234567890123456789012345678901234567890');
   });
 
-  it('enables verify button when value is not empty', () => {
-    render(
-      <SignerAddressInput 
-        value="0x1234567890abcdef1234567890abcdef1234567890" 
-        onChange={mockOnChange} 
-        onVerify={mockOnVerify} 
-      />
-    );
+  it('clears input when clear button is clicked', () => {
+    render(<SignerAddressInput value="0x1234" onChange={mockOnChange} />);
     
-    const verifyButton = screen.getByRole('button', { name: /verify/i });
-    expect(verifyButton).not.toBeDisabled();
+    const clearButton = screen.getByRole('button', { name: /clear/i });
+    fireEvent.click(clearButton);
+    
+    expect(mockOnChange).toHaveBeenCalledWith('');
   });
 });

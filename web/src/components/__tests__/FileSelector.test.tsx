@@ -1,118 +1,115 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import FileSelector from '../FileSelector';
-
-// Mock file creation function
-function createFile(name: string, size: number = 1024, type: string = 'text/plain') {
-  const file = new File([new ArrayBuffer(size)], name, { type });
-  return file;
-}
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { FileSelector } from '@/components/FileSelector';
+import { act } from 'react';
 
 describe('FileSelector', () => {
   const mockOnFileSelect = jest.fn();
+  const mockOnFileRemove = jest.fn();
 
   beforeEach(() => {
     mockOnFileSelect.mockClear();
+    mockOnFileRemove.mockClear();
   });
 
-  it('renders correctly', () => {
-    render(<FileSelector onFileSelect={mockOnFileSelect} />);
+  it('renders upload area when no file is selected', () => {
+    render(<FileSelector onFileSelect={mockOnFileSelect} onFileRemove={mockOnFileRemove} />);
     
-    expect(screen.getByText(/select a file or drag and drop here/i)).toBeInTheDocument();
-    expect(screen.getByText(/pdf, doc, docx, txt, etc./i)).toBeInTheDocument();
+    expect(screen.getByText('Select Document')).toBeInTheDocument();
+    expect(screen.getByText('Upload a file')).toBeInTheDocument();
+    expect(screen.getByText('or drag and drop')).toBeInTheDocument();
+    expect(screen.getByText('PDF, DOC, TXT, or image up to 10MB')).toBeInTheDocument();
   });
 
-  it('allows file selection via click', async () => {
-    const user = userEvent.setup();
-    const testFile = createFile('test-document.pdf', 2048, 'application/pdf');
+  it('handles file selection via input', async () => {
+    render(<FileSelector onFileSelect={mockOnFileSelect} onFileRemove={mockOnFileRemove} />);
     
-    render(<FileSelector onFileSelect={mockOnFileSelect} />);
+    const file = new File(['test content'], 'test.pdf', { type: 'application/pdf' });
     
-    // Find the file input and upload a file
-    const fileInput = screen.getByLabelText(/select a file or drag and drop here/i);
-    const input = fileInput.querySelector('input[type="file"][id="file-upload"][class="hidden"]');
+    const input = screen.getByLabelText('Upload a file');
     
-    // Ensure we have a valid DOM element
-    if (!input) {
-      throw new Error('File input not found');
-    }
-    
-    // Upload the file
-    await user.upload(input, testFile);
-    
-    // Check that onFileSelect was called
-    expect(mockOnFileSelect).toHaveBeenCalledTimes(1);
-    expect(mockOnFileSelect).toHaveBeenCalledWith(testFile, expect.any(String));
-    
-    // Verify the hash is a valid SHA-256 (64 hex characters plus 0x prefix)
-    const hash = mockOnFileSelect.mock.calls[0][1];
-    expect(hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-    
-    // Check that the file details are displayed
-    expect(screen.getByText(/selected file:/i)).toBeInTheDocument();
-    expect(screen.getByText(/test-document.pdf/i)).toBeInTheDocument();
-    expect(screen.getByText(/size:/i)).toBeInTheDocument();
-    expect(screen.getByText(/2.00 KB/i)).toBeInTheDocument();
-  });
-
-  it('allows file selection via drag and drop', async () => {
-    const user = userEvent.setup();
-    const testFile = createFile('test-document.pdf', 2048, 'application/pdf');
-    
-    render(<FileSelector onFileSelect={mockOnFileSelect} />);
-    
-    const dropZone = screen.getByLabelText(/select a file or drag and drop here/i);
-    
-    // Simulate drag enter
-    await userEvent.dnd(upload => upload.beginDrag(dropZone), {
-      dataTransfer: {
-        types: ['Files'],
-        files: [testFile],
-      },
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } });
     });
     
-    // Now drop the file
-    await fireEvent.drop(dropZone, {
-      dataTransfer: {
-        files: [testFile],
-      },
-    });
-    
-    // Check that onFileSelect was called
-    expect(mockOnFileSelect).toHaveBeenCalledTimes(1);
-    expect(mockOnFileSelect).toHaveBeenCalledWith(testFile, expect.any(String));
-    
-    // Verify the hash
-    const hash = mockOnFileSelect.mock.calls[0][1];
-    expect(hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+    expect(mockOnFileSelect).toHaveBeenCalledWith(file);
+    expect(screen.getByText('test.pdf')).toBeInTheDocument();
+    expect(screen.getByText('4 KB')).toBeInTheDocument();
   });
 
-  it('removes selected file when remove button is clicked', async () => {
-    const user = userEvent.setup();
-    const testFile = createFile('test-document.pdf');
+  it('handles drag and drop', () => {
+    render(<FileSelector onFileSelect={mockOnFileSelect} onFileRemove={mockOnFileRemove} />);
     
-    render(<FileSelector onFileSelect={mockOnFileSelect} />);
+    const file = new File(['test content'], 'test.pdf', { type: 'application/pdf' });
+    const dropArea = screen.getByText('or drag and drop').closest('div')!;
     
-    // Select a file first
-    const input = screen.getByLabelText(/select a file or drag and drop here/i)
-      .querySelector('input[type="file"][id="file-upload"][class="hidden"]');
+    // Simulate drag over
+    fireEvent.dragOver(dropArea);
+    expect(dropArea).toHaveClass('border-blue-500');
     
-    if (!input) {
-      throw new Error('File input not found');
-    }
+    // Simulate drop
+    fireEvent.drop(dropArea, {
+      dataTransfer: {
+        files: [file]
+      }
+    });
     
-    await user.upload(input, testFile);
+    expect(mockOnFileSelect).toHaveBeenCalledWith(file);
+    expect(screen.getByText('test.pdf')).toBeInTheDocument();
+  });
+
+  it('displays file information after selection', () => {
+    render(<FileSelector onFileSelect={mockOnFileSelect} onFileRemove={mockOnFileRemove} />);
     
-    // Now click the remove button
-    const removeButton = screen.getByText(/remove file/i);
-    await user.click(removeButton);
+    const file = new File(['test content'], 'document.pdf', { type: 'application/pdf' });
     
-    // Check that onFileSelect was called with null
-    expect(mockOnFileSelect).toHaveBeenCalledTimes(2);
-    // Second call should be with null file and empty hash
-    expect(mockOnFileSelect).toHaveBeenLastCalledWith(null, '');
+    const input = screen.getByLabelText('Upload a file');
     
-    // File details should no longer be visible
-    expect(screen.queryByText(/selected file:/i)).not.toBeInTheDocument();
+    act(() => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+    
+    expect(screen.getByText('document.pdf')).toBeInTheDocument();
+    expect(screen.getByText('12 KB')).toBeInTheDocument(); // Approximate size
+  });
+
+  it('removes file when remove button is clicked', () => {
+    render(<FileSelector onFileSelect={mockOnFileSelect} onFileRemove={mockOnFileRemove} />);
+    
+    const file = new File(['test content'], 'test.pdf', { type: 'application/pdf' });
+    
+    const input = screen.getByLabelText('Upload a file');
+    
+    act(() => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+    
+    const removeButton = screen.getByRole('button', { name: /remove/i });
+    fireEvent.click(removeButton);
+    
+    expect(mockOnFileRemove).toHaveBeenCalled();
+    expect(screen.getByText('Upload a file')).toBeInTheDocument();
+  });
+
+  it('validates file type', () => {
+    render(
+      <FileSelector 
+        onFileSelect={mockOnFileSelect} 
+        onFileRemove={mockOnFileRemove}
+        allowedTypes={['application/pdf']}
+      />);
+    
+    // Mock alert
+    window.alert = jest.fn();
+    
+    const file = new File(['test content'], 'test.txt', { type: 'text/plain' });
+    const input = screen.getByLabelText('Upload a file');
+    
+    act(() => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+    
+    expect(window.alert).toHaveBeenCalledWith('File type not allowed. Allowed types: application/pdf');
+    expect(mockOnFileSelect).not.toHaveBeenCalled();
   });
 });

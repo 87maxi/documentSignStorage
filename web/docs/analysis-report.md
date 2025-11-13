@@ -1,0 +1,1 @@
+- `WalletSelector`: Componente para conexión con MetaMask eliminado y reemplazado por `AnvilWalletSelector` para conexión directa con cuentas de Anvil
