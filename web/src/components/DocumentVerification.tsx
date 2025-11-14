@@ -6,6 +6,7 @@ import { SignerAddressInput } from '@/components/SignerAddressInput';
 import { VerificationResult } from '@/components/VerificationResult';
 import { useFileHash } from '@/hooks/useFileHash';
 import { useContract } from '@/lib/contract';
+import { useWallet } from '../contexts/walletContext';
 import { ethers } from 'ethers';
 
 export function DocumentVerification() {
@@ -50,32 +51,27 @@ export function DocumentVerification() {
   };
   
   const handleVerify = async () => {
-    if (!file) {
-      setVerificationResult({ 
-        isValid: false, 
-        details: null, 
-        error: 'Please select a document to verify' 
-      });
-      return;
-    }
-    
-    if (!signerAddress) {
-      setVerificationResult({ 
-        isValid: false, 
-        details: null, 
-        error: 'Please enter a signer address' 
-      });
-      return;
-    }
-    
     try {
-      setVerificationResult({ 
-        isValid: null, 
-        details: null, 
-        error: null 
-      });
+      // Validaciones iniciales
+      if (!file) {
+        setVerificationResult({ 
+          isValid: false, 
+          details: null, 
+          error: 'Please select a document to verify' 
+        });
+        return;
+      }
       
-      // Validate signer address format
+      if (!signerAddress) {
+        setVerificationResult({ 
+          isValid: false, 
+          details: null, 
+          error: 'Please enter a signer address' 
+        });
+        return;
+      }
+      
+      // Validar formato de dirección del firmante
       if (!ethers.isAddress(signerAddress)) {
         setVerificationResult({ 
           isValid: false, 
@@ -85,19 +81,55 @@ export function DocumentVerification() {
         return;
       }
       
-      // Hash the file
+      // Mostrar resultado inicial de verificación en curso
+      setVerificationResult({ 
+        isValid: null, 
+        details: null, 
+        error: null 
+      });
+      
+      // Confirmar acción con el usuario
+      if (!window.confirm(`Please confirm:\n\nDocument: ${file.name}\nSigner: ${signerAddress}\n\nThis action will verify the document on blockchain and may cost gas fees.`)) {
+        setVerificationResult({ 
+          isValid: false, 
+          details: null, 
+          error: 'Verification cancelled by user' 
+        });
+        return;
+      }
+      
+      // Obtener el wallet desde el contexto
+      const { anvilWallets, selectedAccount, isConnected } = useWallet();
+      
+      // Verificar conexión y disponibilidad de wallets
+      if (!isConnected) {
+        throw new Error('Wallet not connected. Please ensure Anvil is running and accessible.');
+      }
+      
+      if (anvilWallets.length === 0) {
+        throw new Error('No wallets available. Please check Anvil connection.');
+      }
+      
+      // Encontrar el wallet seleccionado
+      const wallet = anvilWallets.find(
+        w => w.account.address.toLowerCase() === signerAddress.toLowerCase()
+      );
+      
+      if (!wallet) {
+        throw new Error(`Signer not found for address ${signerAddress}. Please select a valid Anvil account.`);
+      }
+      
+      // Hash del archivo
       const hash = await hashFile(file);
       
-      // Verify document on blockchain
-      // Since we're using Anvil accounts, we can sign the message with the provider
-      const signer = await provider.getSigner(signerAddress);
-      // Sign the document hash
-      const signature = await signer.signMessage(ethers.getBytes(hash));
-      // Verify document on blockchain with signature
+      // Firmar el hash del documento con el wallet seleccionado
+      const signature = await wallet.signer.signMessage(ethers.getBytes(hash));
+      
+      // Verificar el documento en la blockchain con la firma
       const isValid = await verifyDocument(hash, signerAddress, signature);
       
       if (isValid) {
-        // Get document details
+        // Obtener detalles del documento
         const info = await getDocumentInfo(hash);
         
         if (info) {
@@ -108,7 +140,7 @@ export function DocumentVerification() {
               signer: info.signer,
               timestamp: info.timestamp,
               documentName: file.name,
-              transactionHash: "0x" + "1".repeat(64) // Placeholder - in real app, this would come from transaction receipt
+              transactionHash: "0x" + "1".repeat(64) // Placeholder - en app real, esto vendría del recibo de transacción
             },
             error: null
           });
@@ -116,7 +148,7 @@ export function DocumentVerification() {
           setVerificationResult({
             isValid: false,
             details: { hash, signer: signerAddress, timestamp: Date.now() / 1000, documentName: file.name, transactionHash: "" },
-            error: 'Signer address does not match document owner'
+            error: 'Signer address does not match document owner, hash' 
           });
         }
       } else {

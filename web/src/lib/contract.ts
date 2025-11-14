@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { ethers, Contract } from 'ethers';
+import { useWallet } from '@/contexts/walletContext'; // Adjusted import path
 
 // Replace with your actual contract address and ABI
 const CONTRACT_ADDRESS = "0x5fbdb2315678afecb367f032d93f642f64180aa3"; // Deployed contract address from Anvil
@@ -22,42 +23,69 @@ interface ContractDocumentInfo {
 }
 
 export const useContract = () => {
+  // Llamar useWallet PRIMERO - en el nivel superior
+  const { anvilWallets, selectedAccount, walletProvider, isConnected, error: walletError } = useWallet();
+  
   const [contract, setContract] = useState<Contract | null>(null);
   const [signerAddress, setSignerAddress] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [provider, setProvider] = useState<any>(null);
+  const [provider, setProvider] = useState<ethers.JsonRpcProvider | null>(null);
 
-    useEffect(() => {
+  useEffect(() => {
     const initializeContract = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
+        // Verificar si tenemos todos los elementos necesarios
+        if (!isConnected || !walletProvider || !selectedAccount || anvilWallets.length === 0) {
+          setContract(null);
+          setSignerAddress("");
+          setProvider(null);
+          setIsLoading(false);
+          return;
+        }
+
+        // Encontrar el wallet seleccionado
+        const selectedWallet = anvilWallets.find(
+          wallet => wallet.account.address.toLowerCase() === selectedAccount.toLowerCase()
+        );
         
-        // Siempre usar Anvil como proveedor (único método de conexión)
-        const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
-        // Usar la primera cuenta de Anvil por defecto
-        const signer = await provider.getSigner(0);
+        if (!selectedWallet) {
+          throw new Error(`Wallet no encontrado para la dirección ${selectedAccount}`);
+        }
         
-        // Crear instancia del contrato
+        // Crear instancia del contrato con el signer seleccionado
         const contractInstance = new ethers.Contract(
           CONTRACT_ADDRESS,
           CONTRACT_ABI,
-          signer
+          selectedWallet.signer
         );
         
         setContract(contractInstance);
-        setSignerAddress(await signer.getAddress());
+        setSignerAddress(selectedAccount);
+        setProvider(walletProvider);
+        setError(null);
+        
       } catch (err) {
         console.error('Contract initialization error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
+        setContract(null);
+        setSignerAddress("");
+        setProvider(walletProvider);
       } finally {
         setIsLoading(false);
       }
     };
     
     initializeContract();
-  }, []);
+    
+    // Cleanup function
+    return () => {
+      setContract(null);
+      setSignerAddress("");
+      setProvider(null);
+      setError(null);
+    };
+  }, [isConnected, walletProvider, selectedAccount, anvilWallets, walletError]);
 
   const storeDocumentHash = async (hash: string, timestamp: number, signature: string): Promise<boolean> => {
     if (!contract) throw new Error('Contract not initialized');

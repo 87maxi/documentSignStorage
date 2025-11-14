@@ -4,11 +4,6 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   experimental: {
     optimizePackageImports: ["geist"],
-    turbopack: {
-      resolveAlias: {},
-      lazyCompilation: true,
-      persistentCaching: true,
-    },
   },
   distDir: 'dist',
   compiler: {
