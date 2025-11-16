@@ -64,7 +64,7 @@ export function VerificationResult({
           <h3 className={`text-xl font-bold ${
             isValid === true ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
           }`}>
-            {isValid === true ? 'Verification Successful' : 'Verification Failed'}
+            {isValid === true ? 'Verification Successful' : 'Verification Failed maxi'}
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {isValid === true ? 'Document verified on blockchain' : 'Document could not be verified'}
@@ -118,7 +118,8 @@ export function VerificationResult({
                 rel="noopener noreferrer"
                 className="text-blue-600 dark:text-blue-400 hover:underline flex items-center"
               >
-                {details.transactionHash.slice(0, 10)}...{details.transactionHash.slice(-8)}
+                
+                {details.transactionHash}
                 <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                 </svg>

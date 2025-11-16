@@ -80,6 +80,9 @@ contract DocumentRegistry {
         bool isValid = (recoveredSigner == signer && 
                        documents[hash].signer == signer);
 
+        // Emitir evento de verificación
+        
+        
         return isValid;
     }
 
@@ -120,12 +123,19 @@ contract DocumentRegistry {
     function _recoverSigner(
         bytes32 hash,
         bytes memory signature
-    ) private pure returns (address) {
-        // vm.sign de Foundry ya aplica el prefijo EIP-191 automáticamente
-        // por lo que usamos el hash directamente
+    ) internal pure returns (address) {
+        if (signature.length != 65) {
+            return address(0);
+        }
+
+        bytes32 ethSignedMessageHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
+        );
+        
         (bytes32 r, bytes32 s, uint8 v) = _splitSignature(signature);
         
-        return ecrecover(hash, v, r, s);
+        address recovered = ecrecover(ethSignedMessageHash, v, r, s);
+        return recovered;
     }
 
     /**
@@ -137,7 +147,7 @@ contract DocumentRegistry {
      */
     function _splitSignature(
         bytes memory sig
-    ) private pure returns (bytes32 r, bytes32 s, uint8 v) {
+    ) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
         require(sig.length == 65, "Invalid signature length");
 
         assembly {
@@ -146,8 +156,9 @@ contract DocumentRegistry {
             v := byte(0, mload(add(sig, 96)))
         }
 
-        if (v < 27) {
-            v += 27;
+        // Asegurar que v esté en el rango correcto (27 o 28)
+        if (v != 27 && v != 28) {
+            revert InvalidSignature();
         }
     }
 }

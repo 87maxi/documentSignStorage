@@ -1,19 +1,11 @@
 "use client"
 
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ethers, Contract } from 'ethers';
-import { useWallet } from '@/contexts/walletContext'; // Adjusted import path
+import { useWallet } from '@/contexts/walletContext';
+import DocumentRegistryABI from './contracts/abis/DocumentRegistryABI.json';
 
-// Replace with your actual contract address and ABI
-const CONTRACT_ADDRESS = "0x5fbdb2315678afecb367f032d93f642f64180aa3"; // Deployed contract address from Anvil
-
-// ABI completo para Document Registry contract
-const CONTRACT_ABI = [
-  "function storeDocumentHash(bytes32 hash, uint256 timestamp, bytes memory signature) external",
-  "function verifyDocument(bytes32 hash, address signer, bytes memory signature) external view returns (bool)",
-  "function getDocumentInfo(bytes32 hash) external view returns (bytes32 hash, uint256 timestamp, address signer, bool exists)",
-  "function hasDocument(address user, bytes32 hash) external view returns (bool)"
-];
+const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
 interface ContractDocumentInfo {
   hash: string;
@@ -23,28 +15,37 @@ interface ContractDocumentInfo {
 }
 
 export const useContract = () => {
-  // Llamar useWallet PRIMERO - en el nivel superior
-  const { anvilWallets, selectedAccount, walletProvider, isConnected, error: walletError } = useWallet();
+  const { anvilWallets, selectedAccount, walletProvider, isConnected } = useWallet();
   
   const [contract, setContract] = useState<Contract | null>(null);
   const [signerAddress, setSignerAddress] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [provider, setProvider] = useState<ethers.JsonRpcProvider | null>(null);
+  const [blockHash, setBlockHash] = useState<string>("");
 
   useEffect(() => {
     const initializeContract = async () => {
       try {
-        // Verificar si tenemos todos los elementos necesarios
-        if (!isConnected || !walletProvider || !selectedAccount || anvilWallets.length === 0) {
+        setError(null);
+        setIsLoading(true);
+
+        // Debug logs
+        console.log('🔧 Initializing contract...');
+        console.log('isConnected:', isConnected);
+        console.log('walletProvider:', !!walletProvider);
+        console.log('selectedAccount:', selectedAccount);
+        console.log('anvilWallets count:', anvilWallets?.length);
+        console.log('ABI loaded:', !!DocumentRegistryABI);
+        console.log(DocumentRegistryABI)
+
+        if (!isConnected || !walletProvider || !selectedAccount || !anvilWallets?.length) {
+          console.log('❌ Missing required dependencies');
           setContract(null);
           setSignerAddress("");
-          setProvider(null);
           setIsLoading(false);
           return;
         }
 
-        // Encontrar el wallet seleccionado
         const selectedWallet = anvilWallets.find(
           wallet => wallet.account.address.toLowerCase() === selectedAccount.toLowerCase()
         );
@@ -52,50 +53,61 @@ export const useContract = () => {
         if (!selectedWallet) {
           throw new Error(`Wallet no encontrado para la dirección ${selectedAccount}`);
         }
-        
-        // Crear instancia del contrato con el signer seleccionado
+
+        console.log('✅ Selected wallet found:', selectedWallet.account.address);
+        console.log('✅ Signer available:', !!selectedWallet.signer);
+
+        // Crear instancia del contrato
         const contractInstance = new ethers.Contract(
           CONTRACT_ADDRESS,
-          CONTRACT_ABI,
+          DocumentRegistryABI,
           selectedWallet.signer
         );
+
+        // Test básico del contrato
+        try {
+          const code = await walletProvider.getCode(CONTRACT_ADDRESS);
+          console.log('📄 Contract code length:', code.length);
+          
+          if (code === '0x') {
+            throw new Error('Contract not deployed at address');
+          }
+        } catch (testError) {
+          console.error('❌ Contract test failed:', testError);
+          throw new Error(`Contract not available: ${testError}`);
+        }
         
         setContract(contractInstance);
         setSignerAddress(selectedAccount);
-        setProvider(walletProvider);
-        setError(null);
+        console.log('✅ Contract initialized successfully');
         
       } catch (err) {
-        console.error('Contract initialization error:', err);
+        console.error('❌ Contract initialization error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
         setContract(null);
         setSignerAddress("");
-        setProvider(walletProvider);
       } finally {
         setIsLoading(false);
       }
     };
     
     initializeContract();
-    
-    // Cleanup function
-    return () => {
-      setContract(null);
-      setSignerAddress("");
-      setProvider(null);
-      setError(null);
-    };
-  }, [isConnected, walletProvider, selectedAccount, anvilWallets, walletError]);
+  }, [isConnected, walletProvider, selectedAccount, anvilWallets]);
 
   const storeDocumentHash = async (hash: string, timestamp: number, signature: string): Promise<boolean> => {
     if (!contract) throw new Error('Contract not initialized');
     
     try {
+      console.log('📝 Storing document hash:', { hash, timestamp, signature });
       const tx = await contract.storeDocumentHash(hash, timestamp, signature);
-      await tx.wait();
+      console.log('⏳ Transaction sent:', tx.hash);
+      
+      const receipt = await tx.wait();
+      setBlockHash(receipt.blockHash)
+      console.log('✅ Transaction confirmed:', receipt);
       return true;
     } catch (err) {
-      console.error('Error storing document hash:', err);
+      console.error('❌ Error storing document hash:', err);
       throw err;
     }
   };
@@ -104,7 +116,10 @@ export const useContract = () => {
     if (!contract) throw new Error('Contract not initialized');
     
     try {
+      console.log('🔍 Getting document info for hash:', hash);
       const info = await contract.getDocumentInfo(hash);
+      console.log('📄 Document info received:', info);
+      
       return {
         hash: info.hash,
         timestamp: Number(info.timestamp),
@@ -112,7 +127,7 @@ export const useContract = () => {
         exists: info.exists
       };
     } catch (err) {
-      console.error('Error getting document info:', err);
+      console.error('❌ Error getting document info:', err);
       return null;
     }
   };
@@ -121,9 +136,12 @@ export const useContract = () => {
     if (!contract) throw new Error('Contract not initialized');
     
     try {
-      return await contract.verifyDocument(hash, signer, signature);
+      console.log('🔎 Verifying document:', { hash, signer, signature });
+      const isValid = await contract.verifyDocument(hash, signer, signature);
+      console.log('✅ Document verification result:', isValid);
+      return isValid;
     } catch (err) {
-      console.error('Error verifying document:', err);
+      console.error('❌ Error verifying document:', err);
       return false;
     }
   };
@@ -132,25 +150,22 @@ export const useContract = () => {
     if (!contract) throw new Error('Contract not initialized');
     
     try {
-      return await contract.hasDocument(user, hash);
+      const hasDoc = await contract.hasDocument(user, hash);
+      console.log('📋 Has document result:', { user, hash, hasDoc });
+      return hasDoc;
     } catch (err) {
-      console.error('Error checking if user has document:', err);
+      console.error('❌ Error checking if user has document:', err);
       return false;
     }
   };
 
-  const getSignerAddress = async (): Promise<string> => {
-    if (!contract) throw new Error('Contract not initialized');
-    
-    try {
-      return await contract.signer();
-    } catch (err) {
-      console.error('Error getting signer address:', err);
-      throw err;
-    }
+  const getSignerAddress = (): string => {
+    if (!signerAddress) throw new Error('Signer not available');
+    return signerAddress;
   };
 
   return {
+    blockHash,
     contract,
     signerAddress,
     isLoading,
@@ -160,6 +175,5 @@ export const useContract = () => {
     verifyDocument,
     hasDocument,
     getSignerAddress,
-    provider
   };
 };
