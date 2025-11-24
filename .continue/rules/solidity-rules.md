@@ -8,8 +8,8 @@ invokable: true
 
 
 ## Intruciones para inicializar el projecto 
-1. crea siempre el directorio sc, y si existe eliminalo, este sera el workspace del projecto
-2. inicializa el projecto con el comando foundry en el directorio sc
+1. crea el directorio sc si no existe, este sera el workspace del projecto
+2. inicializa el projecto con el comando foundry si es qie no existe en el directorio sc
 3. usa en todo momento el directorio sc como workspace para este desarrollo
 4. usa siempre  las herramientas basadas en foundry
 5. usa siempre las convenciones de desarrollo de solidity
@@ -37,14 +37,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 ```
 
-
-
-
-
-
-
 ## criterios a utilizar en el proyecto
-  1. inisializa anvil y siempre usa anvil para las cuentas de la wallet, para los test
+  1. utilizar cuentas de  anvil , para los test
   2. siempre ten encuenta la forma mas eficiente de implementacion para optimizar gas
   3. el desarrollo al estar en modo de prueba usa foundry para las comprobasiones
   4. el licensiamiento va a ser siempre **SPDX-License-Identifier: MIT**

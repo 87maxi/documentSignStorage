@@ -25,7 +25,9 @@ export function DocumentVerification() {
       signer: string;
       timestamp: number;
       documentName: string;
-      transactionHash: string ;
+      documentSize: number;
+      documentType: string;
+      transactionHash: string;
     } | null;
     error: string | null;
   }>({ isValid: null, details: null, error: null });
@@ -197,7 +199,7 @@ const handleVerify = async () => {
      
     
     
-    if (documentInfo.exists) {
+          if (documentInfo.exists) {
       console.log('🎉 VERIFICATION SUCCESSFUL!');
       console.log("receipt" ,blockHash)
       setVerificationResult({
@@ -209,6 +211,8 @@ const handleVerify = async () => {
           signer: documentInfo.signer,
           timestamp: documentInfo.timestamp,
           documentName: file.name,
+          documentSize: file.size,
+          documentType: file.type || 'application/octet-stream',
           transactionHash: blockHash
         },
         error: null
@@ -221,8 +225,10 @@ const handleVerify = async () => {
           hash, 
           signer: documentInfo.signer, 
           timestamp: documentInfo.timestamp, 
-          documentName: file.name, 
-          transactionHash: receipt.blockHash 
+          documentName: file.name,
+          documentSize: file.size,
+          documentType: file.type || 'application/octet-stream', 
+          transactionHash: blockHash 
         },
         error: 'All signature verification methods failed'
       });

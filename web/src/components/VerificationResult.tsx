@@ -11,6 +11,8 @@ interface VerificationResultProps {
       signer: string;
       timestamp: number;
       documentName: string;
+      documentSize: number;
+      documentType: string;
       transactionHash: string;
     } | null;
     error: string | null;
@@ -22,6 +24,16 @@ export function VerificationResult({
   result: { isValid, details, error },
   isLoading = false
 }: VerificationResultProps) {
+  // Helper function to format bytes to human readable format
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
   if (isLoading) {
     return (
       <div className="card animate-pulse">
@@ -81,20 +93,52 @@ export function VerificationResult({
 
       {isValid === true && details && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Document Hash</p>
-              <p className="text-sm font-mono text-gray-800 dark:text-gray-300 break-all">{details.hash}</p>
+              <div className="flex items-center space-x-2">
+              <p className="text-sm font-mono text-gray-800 dark:text-gray-300 break-all flex-1">{details.hash}</p>
+              <button
+                onClick={() => navigator.clipboard.writeText(details.hash)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded transition-colors"
+                title="Copy hash"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
             </div>
             
             <div className="bg-white dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Signer Address</p>
-              <p className="text-sm font-mono text-gray-800 dark:text-gray-300 break-all">{details.signer}</p>
+              <div className="flex items-center space-x-2">
+              <p className="text-sm font-mono text-gray-800 dark:text-gray-300 break-all flex-1">{details.signer}</p>
+              <button
+                onClick={() => navigator.clipboard.writeText(details.signer)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded transition-colors"
+                title="Copy address"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
             </div>
 
             <div className="bg-white dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Document Name</p>
               <p className="text-sm text-gray-800 dark:text-gray-300">{details.documentName}</p>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Document Size</p>
+              <p className="text-sm text-gray-800 dark:text-gray-300">{formatBytes(details.documentSize)}</p>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Document Type</p>
+              <p className="text-sm text-gray-800 dark:text-gray-300 break-all">{details.documentType}</p>
             </div>
 
             <div className="bg-white dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">

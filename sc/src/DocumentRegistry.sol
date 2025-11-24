@@ -1,164 +1,147 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-contract DocumentRegistry {
-    struct DocumentInfo {
-        bytes32 hash;
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+
+contract DocumentRegistry is EIP712 {
+    // Estructura para almacenar información del documento
+    struct Document {
         uint256 timestamp;
         address signer;
         bool exists;
     }
 
-    mapping(bytes32 => DocumentInfo) private documents;
-    mapping(address => mapping(bytes32 => bool)) private userDocuments;
+    // Mapping de hash del documento => información
+    mapping(bytes32 => Document) private documents;
 
-    event DocumentStored(
-        bytes32 indexed documentHash,
-        address indexed signer,
-        uint256 timestamp
-    );
-
-    event DocumentVerified(
-        bytes32 indexed documentHash,
-        address indexed signer,
-        bool isValid
-    );
-
-    error DocumentAlreadyExists(bytes32 hash);
-    error InvalidSignature();
-    error DocumentNotFound(bytes32 hash);
+    // Nombre y versión para EIP-712
+    constructor() EIP712("DocumentRegistry", "1") {}
 
     /**
-     * @dev Almacena un hash de documento con timestamp y firma digital
+     * @notice Almacena el hash de un documento con timestamp y firma
      * @param hash El hash del documento a almacenar
-     * @param timestamp El timestamp de almacenamiento
-     * @param signature La firma digital del hash
+     * @param timestamp Fecha/hora del documento
+     * @param signature Firma del usuario sobre el hash
      */
     function storeDocumentHash(
         bytes32 hash,
         uint256 timestamp,
-        bytes memory signature
+        bytes calldata signature
     ) external {
-        if (documents[hash].exists) {
-            revert DocumentAlreadyExists(hash);
-        }
+        // Verificar que el documento no exista ya
+        require(!documents[hash].exists, "Document already stored");
 
-        address signer = _recoverSigner(hash, signature);
-        if (signer == address(0)) {
-            revert InvalidSignature();
-        }
+        // Recuperar el firmante usando EIP-712
+        address signer = _verifySignature(hash, signature);
 
-        documents[hash] = DocumentInfo({
-            hash: hash,
+        // Almacenar el documento
+        documents[hash] = Document({
             timestamp: timestamp,
             signer: signer,
             exists: true
         });
-
-        userDocuments[signer][hash] = true;
-
-        emit DocumentStored(hash, signer, timestamp);
     }
 
     /**
-     * @dev Verifica la autenticidad de un documento
+     * @notice Verifica la autenticidad de un documento
      * @param hash El hash del documento a verificar
-     * @param signer La dirección del firmante esperado
-     * @param signature La firma digital a verificar
-     * @return bool True si la verificación es exitosa
+     * @param expectedSigner Dirección esperada del firmante
+     * @param signature Firma asociada al documento
+     * @return success Si la verificación es exitosa
      */
     function verifyDocument(
         bytes32 hash,
-        address signer,
-        bytes memory signature
+        address expectedSigner,
+        bytes calldata signature
     ) external view returns (bool) {
-        if (!documents[hash].exists) {
-            revert DocumentNotFound(hash);
+        // Verificar firma
+        address recoveredSigner = _verifySignature(hash, signature);
+        
+        // Verificar que el firmante coincida
+        if (recoveredSigner != expectedSigner) {
+            return false;
         }
 
-        address recoveredSigner = _recoverSigner(hash, signature);
-        bool isValid = (recoveredSigner == signer && 
-                       documents[hash].signer == signer);
-
-        // Emitir evento de verificación
-        
-        
-        return isValid;
+        // Verificar que el documento exista
+        return documents[hash].exists;
     }
 
     /**
-     * @dev Obtiene información de un documento almacenado
+     * @notice Obtiene la información de un documento almacenado
      * @param hash El hash del documento
-     * @return DocumentInfo La estructura con la información del documento
+     * @return timestamp Fecha de almacenamiento
+     * @return signer Dirección del firmante
+     * @return exists Si el documento está registrado
      */
-    function getDocumentInfo(
-        bytes32 hash
-    ) external view returns (DocumentInfo memory) {
-        if (!documents[hash].exists) {
-            revert DocumentNotFound(hash);
-        }
-        
-        return documents[hash];
+    function getDocumentInfo(bytes32 hash)
+        external
+        view
+        returns (
+            uint256 timestamp,
+            address signer,
+            bool exists
+        )
+    {
+        Document memory doc = documents[hash];
+        return (doc.timestamp, doc.signer, doc.exists);
     }
 
     /**
-     * @dev Verifica si un usuario tiene un documento específico
-     * @param user La dirección del usuario
-     * @param hash El hash del documento
-     * @return bool True si el usuario tiene el documento
+     * @notice Verifica la firma EIP-712 sobre un hash
+     * @param digest El hash firmado
+     * @param signature La firma
+     * @return signer Dirección del firmante
      */
-    function hasDocument(
-        address user,
-        bytes32 hash
-    ) external view returns (bool) {
-        return userDocuments[user][hash];
+    function _verifySignature(bytes32 digest, bytes calldata signature)
+        private
+        view
+        returns (address)
+    {
+        bytes32 digestHash = _hashTypedDataV4(digest);
+        return _recoverSigner(digestHash, signature);
     }
 
     /**
-     * @dev Recupera la dirección del firmante a partir del hash y la firma
-     * @param hash El hash que fue firmado
-     * @param signature La firma digital
-     * @return address La dirección del firmante
+     * @notice Recupera el firmante de una firma ECDSA
+     * @param digestHash Hash del mensaje firmado
+     * @param signature Firma ECDSA
+     * @return signer Dirección del firmante
      */
-    function _recoverSigner(
-        bytes32 hash,
-        bytes memory signature
-    ) internal pure returns (address) {
-        if (signature.length != 65) {
-            return address(0);
-        }
+    function _recoverSigner(bytes32 digestHash, bytes calldata signature)
+        private
+        pure
+        returns (address)
+    {
+        require(signature.length == 65, "Invalid signature length");
 
-        bytes32 ethSignedMessageHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
-        );
-        
-        (bytes32 r, bytes32 s, uint8 v) = _splitSignature(signature);
-        
-        address recovered = ecrecover(ethSignedMessageHash, v, r, s);
-        return recovered;
-    }
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
 
-    /**
-     * @dev Divide la firma en sus componentes r, s, v
-     * @param sig La firma completa
-     * @return r Componente r de la firma
-     * @return s Componente s de la firma
-     * @return v Componente v de la firma
-     */
-    function _splitSignature(
-        bytes memory sig
-    ) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
-        require(sig.length == 65, "Invalid signature length");
-
+        // Extraer r, s, v de la firma
+        // Usar calldataload para acceder a los datos de calldata
+        // v should be the full byte, not just the 0th bit of it
         assembly {
-            r := mload(add(sig, 32))
-            s := mload(add(sig, 64))
-            v := byte(0, mload(add(sig, 96)))
+            r := calldataload(add(signature.offset, 32))
+            s := calldataload(add(signature.offset, 64))
+            v := byte(0, calldataload(add(signature.offset, 96)))
         }
+        
+        // Adjust v from 0/1 to 27/28 if needed
+        if (v < 27) {
+            v += 27;
+        }
+        
+        // Recuperar la dirección
+        return ecrecover(digestHash, v, r, s);
+    }
 
-        // Asegurar que v esté en el rango correcto (27 o 28)
-        if (v != 27 && v != 28) {
-            revert InvalidSignature();
-        }
+    /**
+     * @dev Función para pruebas: devuelve el hash EIP-712 para un digest dado
+     * @param digest El hash a procesar
+     * @return El hash EIP-712 completo
+     */
+    function getEIP712Hash(bytes32 digest) external view returns (bytes32) {
+        return _hashTypedDataV4(digest);
     }
 }

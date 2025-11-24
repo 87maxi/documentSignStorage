@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ethers, Contract } from 'ethers';
 import { useWallet } from '@/contexts/walletContext';
-import DocumentRegistryABI from './contracts/abis/DocumentRegistryABI.json';
+import DocumentRegistry from '@/lib/contracts/abis/DocumentRegistry.json';
 
 const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
@@ -35,8 +35,8 @@ export const useContract = () => {
         console.log('walletProvider:', !!walletProvider);
         console.log('selectedAccount:', selectedAccount);
         console.log('anvilWallets count:', anvilWallets?.length);
-        console.log('ABI loaded:', !!DocumentRegistryABI);
-        console.log(DocumentRegistryABI)
+        console.log('ABI loaded:', !!DocumentRegistry);
+        console.log(DocumentRegistry)
 
         if (!isConnected || !walletProvider || !selectedAccount || !anvilWallets?.length) {
           console.log('❌ Missing required dependencies');
@@ -60,7 +60,7 @@ export const useContract = () => {
         // Crear instancia del contrato
         const contractInstance = new ethers.Contract(
           CONTRACT_ADDRESS,
-          DocumentRegistryABI,
+          DocumentRegistry,
           selectedWallet.signer
         );
 

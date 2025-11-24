@@ -3,7 +3,8 @@
 import React from 'react';
 import "./globals.css";
 import { WalletProvider } from '@/contexts/walletContext';
-import  {AccountSelector}  from '@/components/AccountSelector';
+import { AccountSelector } from '@/components/AccountSelector';
+import { NetworkSelector } from '@/components/NetworkSelector';
 
 export default function RootLayout({
   children,
@@ -24,7 +25,10 @@ export default function RootLayout({
                 <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                 <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-200">DocumentSign</h1>
               </div>
-              <AccountSelector />
+              <div className="flex items-center space-x-3">
+                <NetworkSelector />
+                <AccountSelector />
+              </div>
             </header>
             
             <main className="flex-grow p-6 max-w-7xl mx-auto w-full">

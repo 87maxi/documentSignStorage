@@ -20,7 +20,7 @@ web/package-lock.json
 sc/cache/
 sc/out/
 sc/broadcast/
-
+sc/lib/
 # production
 /web/dist
 

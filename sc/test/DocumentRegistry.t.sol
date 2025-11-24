@@ -1,139 +1,92 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test, console} from "forge-std/Test.sol";
-import {DocumentRegistry} from "../src/DocumentRegistry.sol";
+import {Test} from "forge-std/Test.sol";
+import {DocumentRegistry} from "src/DocumentRegistry.sol";
 
 contract DocumentRegistryTest is Test {
     DocumentRegistry public registry;
-    
-    // Usar las direcciones REALES que genera vm.sign
-    address internal signer;
-    address internal otherUser = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
-    
-    bytes32 internal constant TEST_HASH = keccak256("test document content");
-    uint256 internal timestamp;
-    
+
+    address public owner = address(0x1);
+    // Update signer to match private key 0x2
+    address public constant SIGNER = 0xf4bdaac5555d65aA8a73bae43308889A3DA1D38A;
+    bytes32 public documentHash = keccak256("important_document.pdf");
+    uint256 public timestamp = block.timestamp;
+
     function setUp() public {
+        vm.prank(owner);
         registry = new DocumentRegistry();
-        timestamp = block.timestamp;
-        
-        // Obtener la dirección REAL que usará vm.sign
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, TEST_HASH);
-        signer = vm.addr(1); // Esta es la dirección REAL
-        
-        console.log("Test signer address:", signer);
+        vm.deal(SIGNER, 10 ether); // Give signer some ETH for gas
     }
-    
-    function test_StoreDocumentHash_Success() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, TEST_HASH);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        
-        vm.prank(signer);
-        registry.storeDocumentHash(TEST_HASH, timestamp, signature);
-        
-        DocumentRegistry.DocumentInfo memory info = registry.getDocumentInfo(TEST_HASH);
-        assertTrue(info.exists, "Document should exist");
-        assertEq(info.signer, signer, "Signer should match");
+
+    // Helper: Firmar usando EIP-712
+    function signEIP712(uint256 privateKey, bytes32 hash) public view returns (bytes memory) {
+        // Use our public function to get the EIP-712 hash
+        bytes32 digest = registry.getEIP712Hash(hash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+        return abi.encodePacked(r, s, v);
     }
-    
-    function test_StoreDocumentHash_EmitsEvent() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, TEST_HASH);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        
-        vm.prank(signer);
-        vm.expectEmit(true, true, false, true);
-        emit DocumentRegistry.DocumentStored(TEST_HASH, signer, timestamp);
-        
-        registry.storeDocumentHash(TEST_HASH, timestamp, signature);
+
+    // Test: Almacenar documento con firma válida
+    function testStoreDocumentWithValidSignature() public {
+        uint256 signerPrivateKey = 0x2;
+        bytes memory signature = signEIP712(signerPrivateKey, documentHash);
+
+        registry.storeDocumentHash(documentHash, timestamp, signature);
+
+        (uint256 ts, address signerAddr, bool exists) = registry.getDocumentInfo(documentHash);
+        assertEq(ts, timestamp);
+        assertEq(signerAddr, SIGNER); // Check against correct address
+        assertEq(exists, true);
     }
-    
-    function test_VerifyDocument_ValidSignature() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, TEST_HASH);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        
-        vm.prank(signer);
-        registry.storeDocumentHash(TEST_HASH, timestamp, signature);
-        
-        bool isValid = registry.verifyDocument(TEST_HASH, signer, signature);
-        assertTrue(isValid, "Signature should be valid");
+
+    // Test: No permitir almacenar documento duplicado
+    function testCannotStoreDuplicateDocument() public {
+        uint256 signerPrivateKey = 0x2;
+        bytes memory signature = signEIP712(signerPrivateKey, documentHash);
+
+        registry.storeDocumentHash(documentHash, timestamp, signature);
+        vm.expectRevert("Document already stored");
+        registry.storeDocumentHash(documentHash, timestamp + 100, signature);
     }
-    
-    function test_VerifyDocument_InvalidSigner() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, TEST_HASH);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        
-        vm.prank(signer);
-        registry.storeDocumentHash(TEST_HASH, timestamp, signature);
-        
-        bool isValid = registry.verifyDocument(TEST_HASH, otherUser, signature);
-        assertFalse(isValid, "Signature should be invalid for different signer");
+
+    // Test: Verificar documento válido
+    function testVerifyValidDocument() public {
+        uint256 signerPrivateKey = 0x2;
+        bytes memory signature = signEIP712(signerPrivateKey, documentHash);
+
+        registry.storeDocumentHash(documentHash, timestamp, signature);
+
+        bool isValid = registry.verifyDocument(documentHash, SIGNER, signature);
+        assertTrue(isValid, "Valid document should verify");
     }
-    
-    function test_GetDocumentInfo_ReturnsCorrectData() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, TEST_HASH);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        
-        vm.prank(signer);
-        registry.storeDocumentHash(TEST_HASH, timestamp, signature);
-        
-        DocumentRegistry.DocumentInfo memory info = registry.getDocumentInfo(TEST_HASH);
-        
-        assertEq(info.hash, TEST_HASH, "Hash should match");
-        assertEq(info.timestamp, timestamp, "Timestamp should match");
-        assertEq(info.signer, signer, "Signer should match");
-        assertTrue(info.exists, "Exists flag should be true");
+
+    // Test: Rechazar verificación con firmante incorrecto
+    function testVerifyDocumentWrongSigner() public {
+        uint256 signerPrivateKey = 0x2;
+        bytes memory signature = signEIP712(signerPrivateKey, documentHash);
+
+        registry.storeDocumentHash(documentHash, timestamp, signature);
+
+        bool isValid = registry.verifyDocument(documentHash, address(0x3), signature);
+        assertFalse(isValid, "Should reject wrong signer");
     }
-    
-    function test_HasDocument_ReturnsTrueForOwnedDocument() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, TEST_HASH);
-        bytes memory signature = abi.encodePacked(r, s, v);
+
+    // Test: Rechazar firma inválida
+    function testVerifyDocumentInvalidSignature() public {
+        bytes memory invalidSignature = abi.encodePacked(bytes32(0), bytes32(0), uint8(27));
         
-        vm.prank(signer);
-        registry.storeDocumentHash(TEST_HASH, timestamp, signature);
-        
-        bool hasDoc = registry.hasDocument(signer, TEST_HASH);
-        assertTrue(hasDoc, "User should have the document");
+        bool isValid = registry.verifyDocument(documentHash, SIGNER, invalidSignature);
+        assertFalse(isValid, "Should reject invalid signature");
     }
-    
-    function test_HasDocument_ReturnsFalseForUnownedDocument() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, TEST_HASH);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        
-        vm.prank(signer);
-        registry.storeDocumentHash(TEST_HASH, timestamp, signature);
-        
-        bool hasDoc = registry.hasDocument(otherUser, TEST_HASH);
-        assertFalse(hasDoc, "Other user should not have the document");
-    }
-    
-    function test_RevertWhen_StoreDuplicateDocument() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, TEST_HASH);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        
-        vm.prank(signer);
-        registry.storeDocumentHash(TEST_HASH, timestamp, signature);
-        
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                DocumentRegistry.DocumentAlreadyExists.selector,
-                TEST_HASH
-            )
-        );
-        vm.prank(signer);
-        registry.storeDocumentHash(TEST_HASH, timestamp, signature);
-    }
-    
-    function test_RevertWhen_VerifyNonExistentDocument() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(1, TEST_HASH);
-        bytes memory signature = abi.encodePacked(r, s, v);
-        
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                DocumentRegistry.DocumentNotFound.selector,
-                TEST_HASH
-            )
-        );
-        registry.verifyDocument(TEST_HASH, signer, signature);
+
+    // Test: Revert si firma tiene longitud incorrecta
+    function testRecoverSignerInvalidSignatureLength() public {
+        bytes memory shortSig = "short";
+        // Crear una firma corta y verificar que falle
+        vm.expectRevert();
+        // Necesitamos llamar a una función que use _recoverSigner
+        // Vamos a intentar verificar un documento con una firma corta
+        registry.verifyDocument(documentHash, SIGNER, shortSig);
     }
 }

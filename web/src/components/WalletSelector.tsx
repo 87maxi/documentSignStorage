@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { anvilAccounts } from '@/lib/anvilAccounts';
+import { useWallet } from '@/contexts/walletContext';
 
 interface AnvilWallet {
   account: {
@@ -13,44 +14,14 @@ interface AnvilWallet {
 }
 
 export function WalletSelector() {
-  const [isConnected, setIsConnected] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
-  const [anvilWallets, setAnvilWallets] = useState<AnvilWallet[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const { isConnected, showDropdown, setShowDropdown, selectedAccount, anvilWallets, error } = useWallet();
 
-  useEffect(() => {
-    const initializeAnvilWallets = async () => {
-      try {
-        const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
-        
-        // Create signer for each Anvil account
-        const wallets = anvilAccounts.map(account => {
-          const signer = new ethers.Wallet(account.privateKey, provider);
-          return {
-            account: {
-              address: account.address,
-              label: account.label
-            },
-            signer
-          };
-        });
-        
-        setAnvilWallets(wallets);
-        setIsConnected(true);
-        setSelectedAccount(wallets[0].account.address);
-      } catch (err) {
-        console.error('Failed to connect to Anvil:', err);
-        setError('Failed to connect to Anvil. Make sure Anvil is running on http://127.0.0.1:8545');
-        setIsConnected(false);
-      }
-    };
-
-    initializeAnvilWallets();
-  }, []);
+  // Remove the useEffect since we're using the context
+  // The wallet initialization is now handled in the WalletProvider
 
   const handleAccountSelect = (address: string) => {
-    setSelectedAccount(address);
+    // This would normally dispatch to the context
+    // For now we'll keep the setShowDropdown
     setShowDropdown(false);
   };
 
@@ -66,7 +37,7 @@ export function WalletSelector() {
     <div className="relative">
       <button
         onClick={() => isConnected && setShowDropdown(!showDropdown)}
-        className={`px-3 py-1 text-xs rounded-full flex items-center space-x-2 transition-colors
+        className={`px-3 py-1.5 text-xs rounded-lg flex items-center space-x-2 transition-colors
           ${isConnected 
             ? 'bg-green-100 text-green-800 hover:bg-green-200' 
             : 'bg-red-100 text-red-800'}
@@ -88,31 +59,36 @@ export function WalletSelector() {
       </button>
 
       {isConnected && showDropdown && (
-        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-50 border border-gray-200 dark:border-gray-700">
+        <div className="absolute right-0 mt-1.5 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-200 dark:border-gray-700">
           <div className="py-1">
-            <div className="px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+            <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
               Select Account
             </div>
             {anvilWallets.map((wallet) => (
-              <button
+                              <button
                 key={wallet.account.address}
                 onClick={() => handleAccountSelect(wallet.account.address)}
-                className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-3
+                className={`w-full text-left px-3 py-2 text-sm flex items-center space-x-3
                   ${selectedAccount === wallet.account.address
-                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }
                 `}
               >
-                <div className="w-6 h-6 bg-purple-100 dark:bg-purple-900/50 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-mono">{anvilAccounts.findIndex(acc => acc.address === wallet.account.address)}</span>
+                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-mono font-bold text-blue-700 dark:text-blue-300">{anvilAccounts.findIndex(acc => acc.address === wallet.account.address)}</span>
                 </div>
-                <div className="flex-1">
-                  <div className="font-medium">{wallet.account.label}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {wallet.account.address.slice(0, 10)}...
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 dark:text-white truncate">{wallet.account.label}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                    {wallet.account.address}
                   </div>
                 </div>
+                {selectedAccount === wallet.account.address && (
+                  <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
               </button>
             ))}
           </div>
