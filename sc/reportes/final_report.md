@@ -1,1 +1,1 @@
-# Reporte Final de Despliegue\n\n- Fecha: dom 23 nov 2025 21:10:04 -03\n- Contrato: DocumentRegistry.sol\n- Dirección: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512\n- RPC: http://127.0.0.1:8545\n- Clave privada usada: ac097...ff80 (Anvil)\n\n
+# Reporte Final de Despliegue\n\n- Fecha: mar 25 nov 2025 10:13:30 -03\n- Contrato: DocumentRegistry.sol\n- Dirección: 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512\n- RPC: http://127.0.0.1:8545\n- Clave privada usada: ac097...ff80 (Anvil)\n\n
