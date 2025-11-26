@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useWallet } from '@/contexts/walletContext';
 import { supportedChains, Chain } from '@/lib/chains';
 

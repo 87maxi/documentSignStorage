@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { ethers, Contract } from 'ethers';
 import { useWallet } from '@/contexts/walletContext';
-import DocumentRegistry from '@/lib/contracts/abis/DocumentRegistry.json';
+import DocumentRegistry from '@/contracts/abis/DocumentRegistry.json';
 
-const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+console.log(CONTRACT_ADDRESS);
 
 interface ContractDocumentInfo {
   hash: string;
