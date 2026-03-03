@@ -1,5 +1,53 @@
 [
   {
+    "type": "constructor",
+    "inputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "eip712Domain",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "fields",
+        "type": "bytes1",
+        "internalType": "bytes1"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "version",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "chainId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "verifyingContract",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "salt",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "extensions",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "type": "function",
     "name": "getDocumentInfo",
     "inputs": [
@@ -11,46 +59,29 @@
     ],
     "outputs": [
       {
-        "name": "",
-        "type": "tuple",
-        "internalType": "struct DocumentRegistry.DocumentInfo",
-        "components": [
-          {
-            "name": "hash",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "timestamp",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "signer",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "exists",
-            "type": "bool",
-            "internalType": "bool"
-          }
-        ]
+        "name": "timestamp",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "signer",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "exists",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "hasDocument",
+    "name": "getEIP712Hash",
     "inputs": [
       {
-        "name": "user",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "hash",
+        "name": "digest",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -58,8 +89,8 @@
     "outputs": [
       {
         "name": "",
-        "type": "bool",
-        "internalType": "bool"
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
@@ -97,7 +128,7 @@
         "internalType": "bytes32"
       },
       {
-        "name": "signer",
+        "name": "expectedSigner",
         "type": "address",
         "internalType": "address"
       },
@@ -118,79 +149,24 @@
   },
   {
     "type": "event",
-    "name": "DocumentStored",
-    "inputs": [
-      {
-        "name": "documentHash",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "signer",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "timestamp",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "DocumentVerified",
-    "inputs": [
-      {
-        "name": "documentHash",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "signer",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "isValid",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      }
-    ],
+    "name": "EIP712DomainChanged",
+    "inputs": [],
     "anonymous": false
   },
   {
     "type": "error",
-    "name": "DocumentAlreadyExists",
-    "inputs": [
-      {
-        "name": "hash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "DocumentNotFound",
-    "inputs": [
-      {
-        "name": "hash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "InvalidSignature",
+    "name": "InvalidShortString",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "StringTooLong",
+    "inputs": [
+      {
+        "name": "str",
+        "type": "string",
+        "internalType": "string"
+      }
+    ]
   }
 ]

@@ -37,7 +37,7 @@ interface WalletProviderProps {
 const DEFAULT_MNEMONIC = "test test test test test test test test test test test junk";
 
 // Default RPC URL for local Anvil instance
-const DEFAULT_RPC_URL = "http://127.0.0.1:8545";
+const ANVIL_URL = process.env.NEXT_PUBLIC_ANVIL_URL || "http://127.0.0.1:8545";
 
 // WalletProvider component
 export const WalletProvider = ({ children }: WalletProviderProps) => {
@@ -52,26 +52,26 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
   useEffect(() => {
     const connection = async () => {
       try {
-        console.log('🔌 Connecting to Anvil at http://127.0.0.1:8545...');
-        
+        console.log(`🔌 Connecting to Anvil at ${ANVIL_URL}...`);
+
         // Create provider for Anvil with shorter timeout for debugging
         const localChain = supportedChains.find(chain => chain.id === 31337) || supportedChains[0];
-        const rpcProvider = new ethers.JsonRpcProvider(DEFAULT_RPC_URL, localChain.id, {
+        const rpcProvider = new ethers.JsonRpcProvider(ANVIL_URL, localChain.id, {
           polling: false,
           staticNetwork: true
         });
-        
+
         // Verificar conexión con Anvil con timeout
         console.log('⏳ Checking network connection...');
         const network = await Promise.race([
           rpcProvider.getNetwork(),
-          new Promise((_, reject) => 
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Connection timeout after 5 seconds')), 5000)
           )
         ]) as ethers.Network;
-        
+
         console.log('✅ Connected to network:', network.name, 'Chain ID:', network.chainId);
-        
+
         // Set current chain
         const chainData = getChainById(Number(network.chainId));
         if (chainData) {
@@ -82,21 +82,21 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
           setCurrentChain({
             id: Number(network.chainId),
             name: network.name,
-            rpcUrl: DEFAULT_RPC_URL,
+            rpcUrl: ANVIL_URL,
             currency: { name: 'Ether', symbol: 'ETH', decimals: 18 }
           });
         }
-        
+
         // Crear wallet desde el mnemonic de Anvil
         console.log('🔑 Generating wallets from mnemonic...');
-        
+
         // Generar las primeras 10 cuentas desde el mnemonic (HD wallet)
         const wallets: AnvilWallet[] = [];
-        
+
         for (let i = 0; i < 10; i++) {
           const derivedWallet = ethers.HDNodeWallet.fromPhrase(DEFAULT_MNEMONIC, undefined, `m/44'/60'/0'/0/${i}`);
           const signer = new ethers.Wallet(derivedWallet.privateKey, rpcProvider);
-          
+
           wallets.push({
             account: {
               address: derivedWallet.address,
@@ -106,23 +106,23 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
             address: derivedWallet.address
           });
         }
-        
+
         console.log('✅ Generated', wallets.length, 'wallets');
-        
+
         setAnvilWallets(wallets);
         setProvider(rpcProvider);
         setIsConnected(true);
         setError(null);
-        
+
         // Establecer la primera cuenta como seleccionada
         if (wallets.length > 0) {
           setSelectedAccount(wallets[0].account.address);
           console.log('📌 Default selected account:', wallets[0].account.address);
         }
-          
+
       } catch (err) {
         console.error('❌ Failed to connect to Anvil:', err);
-        const errorMessage = 'Failed to connect to Anvil. Make sure Anvil is running on http://127.0.0.1:8545. Error: ' + (err instanceof Error ? err.message : 'Unknown error');
+        const errorMessage = `Failed to connect to Anvil at ${ANVIL_URL}. Make sure Anvil is running. Error: ` + (err instanceof Error ? err.message : 'Unknown error');
         setError(errorMessage);
         setIsConnected(false);
         setAnvilWallets([]);
@@ -132,7 +132,7 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
     }
 
     connection();
-  }, []); 
+  }, []);
 
   // Log del estado actual para debugging
   useEffect(() => {
@@ -143,7 +143,7 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
       error,
       hasProvider: !!walletProvider
     });
-    
+
     // Log detallado de las wallets cuando estén disponibles
     if (anvilWallets.length > 0) {
       console.log('💰 Available wallets:', anvilWallets.map(w => ({
@@ -158,20 +158,20 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
   const switchChain = async (chainId: number): Promise<void> => {
     try {
       console.log('🔄 Attempting to switch to chain:', chainId);
-      
+
       const chain = getChainById(chainId);
       if (!chain) {
         throw new Error(`Chain with id ${chainId} is not supported`);
       }
-      
+
       // For now, we'll only support switching to local Anvil for development
       if (chainId !== 31337) {
         throw new Error(`Chain switching to ${chain.name} is not yet implemented. Please use Anvil (31337).`);
       }
-      
+
       // In a real implementation, this would use wallet extension APIs like:
       // await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x' + chainId.toString(16) }] });
-      
+
       // For now, we'll just show a message and reload
       alert(`Chain switch to ${chain.name} would normally be handled by your wallet.\nFor development, please ensure Anvil is running on port 8545.`);
       window.location.reload();
@@ -188,12 +188,12 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
   };
 
   return (
-    <WalletContext.Provider value={{ 
-          anvilWallets, 
-    selectedAccount, 
-    setSelectedAccount: debugSetSelectedAccount, 
-    isConnected, 
-    error, 
+    <WalletContext.Provider value={{
+          anvilWallets,
+    selectedAccount,
+    setSelectedAccount: debugSetSelectedAccount,
+    isConnected,
+    error,
     walletProvider,
     currentChain,
     switchChain,
