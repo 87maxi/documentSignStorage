@@ -24,8 +24,9 @@ export const AccountSelector: React.FC = () => {
 
   const handleSelect = (address: string) => {
     setSelectedAccount(address);
-    setIsOpen(false);
+    setIsOpen(false); // Explicitly close the dropdown after selection
   };
+
 
   const selectedWallet = anvilWallets.find(w => w.address === selectedAccount);
 
